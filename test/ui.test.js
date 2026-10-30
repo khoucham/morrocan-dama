@@ -3,7 +3,7 @@
    exercise the page's signalling code. Real audio can only be checked on real devices. */
 const assert = require('assert');
 const { JSDOM } = require('jsdom');
-const { start } = require('../server.js');
+const { start } = require('../app.js');
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const errors = [];

@@ -1,6 +1,6 @@
 const assert = require('assert');
 const WebSocket = require('ws');
-const { start } = require('../server.js');
+const { start } = require('../app.js');
 const E = require('../src/engine.js');
 
 function client(port) {
