@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2A3BB5"/><stop offset="1" stop-color="#0C0F23"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F4D27A"/><stop offset="1" stop-color="#B07A12"/></linearGradient>
+    <radialGradient id="ivory" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#FFF8E6"/><stop offset="1" stop-color="#D9C9A0"/></radialGradient>
+    <radialGradient id="ruby" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#E0506E"/><stop offset="1" stop-color="#650D24"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- eight-pointed star (two squares) -->
+  <g transform="translate(256 256)">
+    <rect x="-150" y="-150" width="300" height="300" fill="url(#gold)"/>
+    <rect x="-150" y="-150" width="300" height="300" fill="url(#gold)" transform="rotate(45)"/>
+    <rect x="-118" y="-118" width="236" height="236" fill="#12184A" transform="rotate(22.500)" opacity="0"/>
+    <circle r="112" fill="#0F1648"/>
+    <circle r="104" fill="none" stroke="url(#gold)" stroke-width="6"/>
+    <!-- ivory stone with a ruby stone beside it -->
+    <circle cx="-34" cy="18" r="54" fill="url(#ivory)" stroke="#B07A12" stroke-width="5"/>
+    <circle cx="-34" cy="18" r="30" fill="none" stroke="#B07A12" stroke-width="3" opacity=".55"/>
+    <circle cx="46" cy="-22" r="54" fill="url(#ruby)" stroke="#E6B84F" stroke-width="5"/>
+    <circle cx="46" cy="-22" r="30" fill="none" stroke="#E6B84F" stroke-width="3" opacity=".5"/>
+  </g>
+</svg>

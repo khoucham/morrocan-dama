@@ -11,7 +11,7 @@ Also plays against the computer or two players on one device.
 
 Open http://localhost:3000 in two browser windows (or on two devices on the same wifi using
 your computer's address). In one, choose **Play online with voice**, then **Create table**.
-In the other, enter the code. Both press **Start voice** and allow the microphone.
+In the other, open the invite link (it takes you straight to the table). Both tap the big microphone button and allow the microphone.
 
 ## Put it on the internet
 
@@ -43,6 +43,11 @@ Get TURN credentials from a TURN provider (many have a free tier), then start th
   with nobody connected. Restarting the server closes all tables.
 - A refresh or dropped connection resumes the same table automatically (token kept in the tab).
 - Voice uses WebRTC. The server only relays the connection setup messages. Audio never touches it.
+- **Watchers.** The host's invite box has a second link ending in `/watch`. Up to 4 watchers can join; they see the
+  board live, cannot play, and join the call **muted**. The host sees a Mute/Unmute button under each watcher, and a
+  watcher can raise a hand to ask to speak. Everyone connects to everyone (a mesh), so keep it to about 6 people.
+  Muting is enforced by the server's list: the muted person's microphone is switched off and everyone else's
+  browser stops playing their audio. Opening the play link when both seats are taken joins as a watcher automatically.
 - Rematch swaps colours so the other player moves first.
 - The board is mirrored so the long 8-square diagonal runs from each player's bottom-right corner to the top-left. Move notation (a-h, 1-8) follows that layout, with file a on the left.
 
@@ -66,3 +71,22 @@ Voice is peer-to-peer, so it is not affected either way.
 - Entry file: `server.js`, Node 22, **no build command** (`public/index.html` is already built and committed).
 - After editing anything in `src/`, run `npm run build` and commit the new `public/index.html`.
 - Tests run automatically on every push (GitHub Actions: `.github/workflows/test.yml`).
+
+## Phone app, sounds, chat
+
+- **Installable app.** The page has a manifest, icons and a small service worker (`public/sw.js`). On Android/Chrome
+  an "Install the app" button appears on the menu; on iPhone the menu shows "Share, then Add to Home Screen". Once
+  installed it opens full screen, and the computer / two-player modes also start with no connection.
+  The icons are made from `tools/icon.svg` with `node tools/make-icons.js` (needs playwright; the PNGs are committed).
+- **Sounds.** Synthesised in the browser (no audio files): move, capture, crown, friend joins, your turn, chat pop,
+  win / lose / draw. One switch (Sound: on/off) is remembered on each device.
+- **Chat and reactions.** Everyone at the table, watchers included, can write (200 characters, two messages a second).
+  The last 30 messages are kept so latecomers see them. Six quick reactions float over the board.
+
+## Clock, hint, puzzles
+
+- **Game clock.** When creating a table choose No clock, 3, 5 or 10 minutes each. The server keeps the time; it only runs
+  while both players are connected, and running out of time loses the game.
+- **Hint.** The Hint button on a local game shows the computer's best move (depth 12, about one second).
+- **Tactic puzzles.** 16 puzzles, each with exactly one winning first move (checked by the engine in
+  `test/puzzles.test.js`). Progress is saved on the device. Regenerate with `node tools/make-puzzles.js`.
