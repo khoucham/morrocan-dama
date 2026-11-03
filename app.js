@@ -35,7 +35,7 @@ const WATCHER_GONE_MS = 2 * 60 * 1000;
 /* Voice works between most pairs of players with STUN alone. A TURN relay covers strict networks
    (some mobile carriers, corporate wifi). Set TURN_URLS / TURN_USERNAME / TURN_CREDENTIAL to enable it. */
 function iceConfig() {
-  const servers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+  const servers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
   if (process.env.TURN_URLS) {
     servers.push({
       urls: process.env.TURN_URLS.split(',').map(s => s.trim()).filter(Boolean),

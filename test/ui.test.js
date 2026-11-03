@@ -187,7 +187,7 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
   await test('the host sees the raised hand and unmutes; the watcher goes live; the host mutes again', async () => {
     click(W, '#vc-hand');
     await until(() => A.document.querySelector('.hand-badge'), 2000, 'host sees hand');
-    assert(/Hand raised/.test(txt(W, '#vc-handlab')));
+    await until(() => /Hand raised/.test(txt(W, '#vc-handlab')), 2000, 'watcher label');
     click(A, '#vc-people .pm');                         // Unmute
     await until(() => W.document.querySelector('#vc-mic').classList.contains('live'), 2000, 'watcher live');
     assert.strictEqual(W.__track.enabled, true, 'track on once unmuted');

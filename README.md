@@ -90,3 +90,17 @@ Voice is peer-to-peer, so it is not affected either way.
 - **Hint.** The Hint button on a local game shows the computer's best move (depth 12, about one second).
 - **Tactic puzzles.** 16 puzzles, each with exactly one winning first move (checked by the engine in
   `test/puzzles.test.js`). Progress is saved on the device. Regenerate with `node tools/make-puzzles.js`.
+
+## Phone layout
+
+On screens up to 860px wide the game is one fixed screen with no page scrolling. The board, both player tags and the
+status line stay in view; a bottom bar holds the microphone (tap to mute / unmute), who is at the table, a message box,
+quick reactions and the menu. Chat, voice, invite link and the menu open as sheets above the bar. New messages from
+others also pop up briefly above the bar. Local games get Hint and Undo buttons in the bar.
+
+## Installing on a phone
+
+The menu always shows "Install the app on this phone" on Android and iPhone. On Chrome for Android it opens the real install
+prompt. Where a browser gives no prompt (iPhone, or a link opened inside WhatsApp / Instagram), it shows the exact steps.
+Links opened inside another app cannot install anything: open them in Safari (iPhone) or Chrome (Android) first.
+The menu is also one fixed screen on phones, with page bounce and pull-to-refresh switched off.
