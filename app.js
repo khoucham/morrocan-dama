@@ -34,8 +34,29 @@ const WATCHER_GONE_MS = 2 * 60 * 1000;
 
 /* Voice works between most pairs of players with STUN alone. A TURN relay covers strict networks
    (some mobile carriers, corporate wifi). Set TURN_URLS / TURN_USERNAME / TURN_CREDENTIAL to enable it. */
+/* Easiest way: a free Metered account. Set METERED_APP (your app name) and METERED_API_KEY and the server
+   fetches fresh relay credentials itself and refreshes them every 30 minutes. */
+let meteredServers = null, meteredAt = 0, meteredBusy = false;
+function refreshMetered() {
+  const app = process.env.METERED_APP, key = process.env.METERED_API_KEY;
+  if (!app || !key || meteredBusy || Date.now() - meteredAt < 30 * 60 * 1000) return;
+  meteredBusy = true;
+  const https = require('https');
+  const req = https.get({ host: app.replace(/[^A-Za-z0-9-]/g, '') + '.metered.live', path: '/api/v1/turn/credentials?apiKey=' + encodeURIComponent(key), timeout: 8000 }, res => {
+    let body = '';
+    res.on('data', d => { body += d; if (body.length > 20000) req.destroy(); });
+    res.on('end', () => {
+      meteredBusy = false;
+      try { const list = JSON.parse(body); if (Array.isArray(list) && list.length) { meteredServers = list.filter(s => s && s.urls); meteredAt = Date.now(); console.log('Metered relay: ' + meteredServers.length + ' servers loaded'); } } catch (e) { console.log('Metered relay: bad answer'); }
+    });
+  });
+  req.on('timeout', () => req.destroy());
+  req.on('error', e => { meteredBusy = false; console.log('Metered relay: ' + e.message); });
+}
 function iceConfig() {
   const servers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
+  refreshMetered();
+  if (meteredServers) meteredServers.forEach(s => servers.push(s));
   if (process.env.TURN_URLS) {
     servers.push({
       urls: process.env.TURN_URLS.split(',').map(s => s.trim()).filter(Boolean),
@@ -48,6 +69,7 @@ function iceConfig() {
 
 function start(port, host, opts) {
   const CLOCK_UNIT = (opts && opts.clockUnitMs) || 60000;   // one clock "minute" (tests use a short one)
+  refreshMetered();                                         // get the relay credentials ready before the first table opens
   const rooms = new Map();
   const sseClients = new Map();   // fallback connections (no WebSocket needed), keyed by session id
   const SID = /^[A-Za-z0-9_-]{16,64}$/;
@@ -109,6 +131,14 @@ function start(port, host, opts) {
       if (url === '/sse' && req.method === 'GET') return openSse(req, res, sid);
       if (url === '/send' && req.method === 'POST') return receiveSse(req, res, sid);
       res.writeHead(405); return res.end();
+    }
+    const cm = /^\/cards\/([KQJ]-[dhsc])\.(png|webp|jpg)$/.exec(url);
+    if (cm && req.method === 'GET') {
+      return fs.readFile(path.join(__dirname, 'public', 'cards', cm[1] + '.' + cm[2]), (err, data) => {
+        if (err) { res.writeHead(404); return res.end(); }
+        res.writeHead(200, { 'Content-Type': cm[2] === 'jpg' ? 'image/jpeg' : 'image/' + cm[2], 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-cache' });
+        res.end(data);
+      });
     }
     const asset = ASSETS[url];
     if (asset && req.method === 'GET') {

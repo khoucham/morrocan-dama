@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Dama">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Reem+Kufi:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Reem+Kufi:wght@500;700&family=Noto+Sans+Arabic:wght@400;600;700&display=swap">
 <style>
   /* Layout: a menu view and a game view (board left, control panel right on wide screens).
      Look: night-indigo page, gold line-work, a zellige board of teal and sandstone tiles inside
@@ -313,6 +313,152 @@
     .install .btn { font-size: 14px; padding: 10px 12px; }
   }
 
+
+  /* ---------- game picker on the home screen ---------- */
+  .setup-in { display: flex; flex-direction: column; gap: 18px; }
+  .setup-in[hidden] { display: none; }
+
+  /* ---------- Chkobba ---------- */
+  body { --card: #F7EDD6; --card-edge: #BDAA82; --c-red: #C8281E; --c-blk: #1F1D1A; --tbl-a: #0F4F66; --tbl-b: #0B3F54; --tbl-line: rgba(255, 255, 255, .12); }
+  #ck { --cw: clamp(54px, min(20vw, 12.5vh), 92px); }
+  #ck:not([hidden]) { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; justify-content: center; overflow: hidden; max-width: none; margin: 0;
+    padding: max(8px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px)); }
+  body:has(#ck:not([hidden])) { overflow: hidden; padding: 0; }
+  .ck-wrap { width: min(100%, 720px); display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+  .ck-bar { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+  .ck-ico { font: inherit; font-weight: 600; font-size: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 18px; min-height: 36px; padding: 0 12px; cursor: pointer; }
+  .ck-score { display: flex; justify-content: center; align-items: baseline; gap: 10px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; flex-wrap: wrap; }
+  .ck-score b { font-family: var(--font-display); font-size: 22px; color: var(--fg); margin-right: 4px; }
+  .ck-score .us b { color: var(--gold); }
+  .ck-score .to { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  .ck-score .deck { flex-basis: 100%; text-align: center; font-size: 12px; }
+  .seat { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 0; transition: opacity .2s; }
+  .seat[hidden] { display: none; }
+  .seat .nm { font-weight: 600; font-size: 13px; padding: 2px 10px; border-radius: 99px; background: var(--panel); border: 1px solid var(--line); white-space: nowrap; }
+  .seat .nm em { font-style: normal; background: var(--gold-bright); color: var(--gold-ink); border-radius: 50%; display: inline-block; width: 17px; height: 17px; line-height: 17px; text-align: center; font-size: 11px; font-weight: 700; margin-left: 3px; }
+  .seat.turn .nm { border-color: var(--gold-bright); box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold-bright) 55%, transparent); }
+  .seat .fan { display: inline-flex; --cw: 26px; }
+  .seat .fan .pc + .pc { margin-left: -14px; }
+  .seat.left, .seat.right { flex-direction: column; width: 56px; flex: none; }
+  .seat.left .fan, .seat.right .fan { flex-direction: column; --cw: 30px; }
+  .seat.left .fan .pc + .pc, .seat.right .fan .pc + .pc { margin-left: 0; margin-top: -30px; }
+  .seat.left .nm, .seat.right .nm { writing-mode: horizontal-tb; font-size: 11px; padding: 2px 6px; }
+  .ck-mid { display: flex; gap: 6px; flex: 1 1 auto; min-height: 0; }
+  .ck-table { flex: 1 1 auto; min-width: 0; border-radius: 16px; border: 3px solid #C48F22; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .25), 0 6px 20px rgba(8, 12, 50, .3);
+    background: radial-gradient(ellipse at 50% 40%, var(--tbl-a), var(--tbl-b)); position: relative; overflow: hidden;
+    display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 8px 8px; padding: 12px 8px; --cw: clamp(46px, min(16.5vw, 10vh), 78px); }
+  .ck-table::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+    background: repeating-linear-gradient(45deg, var(--tbl-line) 0 1px, transparent 1px 22px), repeating-linear-gradient(-45deg, var(--tbl-line) 0 1px, transparent 1px 22px); }
+  .ck-table .empty { position: relative; color: rgba(255, 255, 255, .6); font-size: 14px; align-self: center; }
+  .ck-table .pc { position: relative; }
+  .ck-table .cards { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .ck-info { display: flex; align-items: center; gap: 8px; min-height: 40px; position: relative; }
+  .ck-last { display: flex; gap: 3px; align-items: center; flex: none; --cw: 24px; }
+  .ck-last .arrow { color: var(--muted); font-weight: 700; padding: 0 2px; }
+  .ck-status { margin: 0; flex: 1 1 auto; min-width: 0; font-family: var(--font-display); font-weight: 500; font-size: 16px; line-height: 1.25; }
+  .ck-mid { position: relative; }
+  .ck-chk { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; pointer-events: none; background: var(--must); color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 34px; border-radius: 99px; padding: 8px 28px; border: 3px solid #fff; box-shadow: 0 8px 28px rgba(0, 0, 0, .5); animation: ckbang .6s ease-out; }
+  @keyframes ckbang { from { transform: translate(-50%, -50%) scale(.3); opacity: 0; } 60% { transform: translate(-50%, -50%) scale(1.15); } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+  .ck-score .deck.lastround { max-width: max-content; margin: 0 auto; background: var(--must); color: #fff; border-radius: 99px; padding: 2px 10px; font-weight: 700; animation: ckbang2 .8s ease-out; }
+  @keyframes ckbang2 { from { transform: scale(.5); } 60% { transform: scale(1.2); } to { transform: scale(1); } }
+  .lang-btn { position: absolute; top: 12px; inset-inline-end: 12px; z-index: 5; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 99px; padding: 6px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+  html[lang="ar"] body, html[lang="ar"] button, html[lang="ar"] input, html[lang="ar"] select { font-family: "Noto Sans Arabic", "Reem Kufi", system-ui, sans-serif; }
+  html[lang="ar"] .hero .ar, html[lang="ar"] .t-ar { display: none; }
+  html[dir="rtl"] #board, html[dir="rtl"] .board, html[dir="rtl"] .ck-mid, html[dir="rtl"] .ck-table, html[dir="rtl"] .ck-hand, html[dir="rtl"] .seat, html[dir="rtl"] .ck-last, html[dir="rtl"] .pc { direction: ltr; }
+  html[dir="rtl"] .ck-cmp td:first-child { text-align: right; }
+  .ck-piles { display: flex; gap: 6px; justify-content: center; flex: none; font-size: 11px; color: var(--muted); }
+  .ck-piles .pl { flex: 1 1 0; min-width: 0; padding: 3px 6px; border-radius: 8px; background: var(--field); border: 1px solid var(--line); text-align: center; line-height: 1.35; }
+  .ck-piles .pl.us { border-top: 3px solid var(--gold-bright); } .ck-piles .pl.them { border-top: 3px solid var(--must); }
+  .ck-piles .pl i { display: block; font-style: normal; font-weight: 600; color: var(--fg); }
+  .ck-piles .pl b { color: var(--fg); }
+  .ck-piles .pl em { font-style: normal; margin: 0 4px; white-space: nowrap; }
+  .ck-piles .pl u { text-decoration: none; }
+  .ck-cmp { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 10px; }
+  .ck-cmp th, .ck-cmp td { padding: 5px 8px; text-align: center; border-bottom: 1px solid var(--line); }
+  .ck-cmp td:first-child { text-align: left; color: var(--muted); }
+  .ck-cmp td.win { font-weight: 700; color: var(--fg); background: rgba(230, 184, 79, .22); }
+  @keyframes ckpop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
+  .ck-hand { display: flex; justify-content: center; gap: 10px; padding: 12px 0 4px; min-height: calc(var(--cw) * 1.46 + 18px); }
+  .ck-hand .pc { transition: transform .15s; }
+  .ck-hand .pc.sel { transform: translateY(-14px); box-shadow: 0 0 0 3px var(--gold-bright), 0 8px 16px rgba(0, 0, 0, .35); }
+  .ck-hand .pc.wait { opacity: .75; }
+  .ck-act .btn { width: 100%; }
+  .ck-act .btn:disabled { opacity: .55; cursor: default; }
+
+  .pc { position: relative; display: block; flex: none; width: var(--cw); height: calc(var(--cw) * 1.46); border-radius: calc(var(--cw) * .09); background: var(--card); border: 1px solid var(--card-edge);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .35); padding: 0; margin: 0; font: inherit; font-size: calc(var(--cw) * .27); line-height: 1; color: var(--c-blk); cursor: pointer; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+  div.pc, span.pc { cursor: default; }
+  .pc.red { color: var(--c-red); }
+  .pc .cn { position: absolute; left: 7%; top: 5%; display: flex; flex-direction: column; align-items: center; font-style: normal; line-height: .95; }
+  .pc .cn b { font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-size: .98em; }
+  .pc .cn u { text-decoration: none; font-size: .72em; margin-top: 1px; }
+  .pc .cn.bt { left: auto; top: auto; right: 7%; bottom: 5%; transform: rotate(180deg); }
+  .pc .pip { position: absolute; transform: translate(-50%, -50%); font-size: .74em; line-height: 1; }
+  .pc .pip.ace { font-size: 2.3em; }
+  .pc .cn.ct { top: 4%; left: 8%; }
+  .pc .cn.ct u { font-size: 1.3em; margin: 0; }
+  .pc .cn.ct.bt { top: auto; left: auto; right: 8%; bottom: 4%; }
+  .pc .court { position: absolute; left: 9%; right: 9%; top: 6%; bottom: 6%; }
+  .pc .court svg { width: 100%; height: 100%; display: block; }
+  .pc .cimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; z-index: 3; pointer-events: none; }
+  .pc.big { --cw: 150px; cursor: default; }
+  .pc.mini { --cw: 24px; }
+  .pc.mini .cn.bt, .pc.mini .pip:not(.ace) { display: none; }
+  .pc.mini .court { left: 6%; right: 6%; top: 8%; bottom: 8%; }
+  .pc.mini .cn.ct { display: none; }
+  .pc.mini .cn { left: 12%; top: 8%; font-size: 1.15em; }
+  .pc.back { background-color: var(--card); border-color: #8d7a52; cursor: default;
+    background-image: radial-gradient(circle at 50% 50%, #3a342b 0 1.3px, transparent 1.6px), linear-gradient(45deg, rgba(58, 52, 43, .35) 25%, transparent 25% 75%, rgba(58, 52, 43, .35) 75%);
+    background-size: 7px 7px, 7px 7px; box-shadow: inset 0 0 0 3px var(--card), inset 0 0 0 4px #8d7a52, 0 2px 5px rgba(0, 0, 0, .35); }
+  .ck-table .pc.opt { box-shadow: 0 0 0 3px var(--gold-bright), 0 0 14px 2px rgba(230, 184, 79, .6); }
+  .ck-table .pc.took { box-shadow: 0 0 0 4px #6DE29D, 0 0 18px 4px rgba(109, 226, 157, .65); }
+  .ck-table .pc.played { box-shadow: 0 0 0 4px var(--gold-bright), 0 0 18px 4px rgba(230, 184, 79, .7); animation: ckland .35s ease-out; }
+  .ck-table .pc.landed { animation: ckland .35s ease-out; }
+  @keyframes ckland { from { transform: translateY(-34px) scale(1.15); opacity: .2; } to { transform: none; opacity: 1; } }
+  .ck-table .pc { transition: transform .35s ease-in, opacity .35s ease-in; }
+  .ck-table .pc.fly-down { transform: translateY(140px) scale(.5); opacity: 0; }
+  .ck-table .pc.fly-up { transform: translateY(-140px) scale(.5); opacity: 0; }
+  .ck-table .pc.fly-left { transform: translateX(-150px) scale(.5); opacity: 0; }
+  .ck-table .pc.fly-right { transform: translateX(150px) scale(.5); opacity: 0; }
+  .ck-table .pc.picked { transform: translateY(-8px); box-shadow: 0 0 0 4px #6DE29D, 0 8px 16px rgba(0, 0, 0, .4); }
+  .ck-dialog { align-items: stretch; }
+  .ck-cutcard { display: flex; justify-content: center; padding: 6px 0; }
+  .dialog .ck-items { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .ck-items li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 12px; border-radius: 8px; background: var(--field); border: 1px solid var(--line); }
+  .ck-items li.us { border-left: 4px solid var(--gold-bright); }
+  .ck-items li.them { border-left: 4px solid var(--must); }
+  .ck-total { display: flex; justify-content: space-around; align-items: center; text-align: center; gap: 8px; color: var(--muted); font-size: 13px; }
+  .ck-total b { display: block; font-family: var(--font-display); font-size: 34px; color: var(--fg); }
+  .ck-total .us b { color: var(--gold); }
+  @media (max-width: 860px) { .pc.big { --cw: 128px; } }
+  .ck-chk.ck-haya { font-size: 32px; }
+  #ck-chk:not([hidden]) ~ #ck-haya { top: 74%; }
+  @media (prefers-reduced-motion: reduce) { .ck-chk { animation: none; } .ck-hand .pc { transition: none; } }
+
+
+  /* ---------- games hub ---------- */
+  #hub { display: flex; flex-direction: column; align-items: center; gap: 22px; padding-top: 18px; }
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: min(100%, 560px); }
+  .tile { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 12px 16px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; text-align: center;
+    box-shadow: 0 10px 26px rgba(10, 16, 60, .14); transition: transform .12s, border-color .12s; }
+  .tile:active { transform: scale(.97); }
+  .tile:hover { border-color: var(--gold-bright); }
+  .tile svg { width: min(100%, 120px); height: auto; margin-bottom: 8px; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .3)); }
+  .tile .t-name { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.1; }
+  .tile .t-ar { font-family: var(--font-display); font-size: 19px; color: var(--gold); }
+  .tile .t-sub { font-size: 13px; color: var(--muted); margin-top: 6px; text-wrap: balance; }
+  #hub .install { width: min(100%, 360px); }
+  .menu-back { align-self: flex-start; }
+  @media (max-width: 860px) {
+    body:has(#hub:not([hidden])) { overflow: hidden; padding: 0; }
+    #hub:not([hidden]) { position: fixed; inset: 0; overflow-y: auto; overscroll-behavior: contain; max-width: none; margin: 0; gap: 16px; justify-content: safe center;
+      padding: max(10px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)); }
+    .tiles { gap: 12px; }
+    .tile { padding: 14px 8px 12px; }
+    .tile .t-name { font-size: 23px; }
+    .setup-in { gap: 10px; }
+  }
+
   /* ---------- hints and puzzles ---------- */
   .sq.hint { box-shadow: inset 0 0 0 4px var(--gold-bright); animation: hintpulse 1s ease-in-out infinite; }
   @keyframes hintpulse { 50% { box-shadow: inset 0 0 0 4px transparent; } }
@@ -354,8 +500,47 @@
 <div id="audio-bin" hidden></div>
 
 <div id="app">
-  <!-- ===================== main menu ===================== -->
-  <section id="menu" class="view">
+  <!-- ===================== game menu ===================== -->
+  <!-- ===================== games hub ===================== -->
+  <section id="hub" class="view">
+    <button class="lang-btn" id="lang-btn" type="button" data-no-i18n aria-label="Language">العربية</button>
+    <div class="hero">
+      <h1>Pick a game</h1>
+      <p class="ar" lang="ar" dir="rtl">اختر لعبة</p>
+    </div>
+    <div class="tiles">
+      <button class="tile" id="tile-dama" type="button" aria-label="Moroccan Dama">
+        <svg viewBox="0 0 96 96" aria-hidden="true">
+          <rect x="4" y="4" width="88" height="88" rx="10" fill="#1B2A8F"/><rect x="4" y="4" width="88" height="88" rx="10" fill="none" stroke="#E6B84F" stroke-width="2.500"/>
+          <g transform="translate(14 14)">
+            <rect width="68" height="68" fill="#D7C29C"/>
+            <g fill="#0F5A62"><rect x="0" y="0" width="17" height="17"/><rect x="34" y="0" width="17" height="17"/><rect x="17" y="17" width="17" height="17"/><rect x="51" y="17" width="17" height="17"/><rect x="0" y="34" width="17" height="17"/><rect x="34" y="34" width="17" height="17"/><rect x="17" y="51" width="17" height="17"/><rect x="51" y="51" width="17" height="17"/></g>
+            <circle cx="8.500" cy="8.500" r="6.200" fill="#C93E5B" stroke="#E6B84F" stroke-width="1.200"/><circle cx="42.500" cy="8.500" r="6.200" fill="#C93E5B" stroke="#E6B84F" stroke-width="1.200"/>
+            <circle cx="25.500" cy="42.500" r="6.200" fill="#FFF8E6" stroke="#E6B84F" stroke-width="1.200"/><circle cx="59.500" cy="59.500" r="6.200" fill="#FFF8E6" stroke="#E6B84F" stroke-width="1.200"/>
+            <path d="M42.500 4.500 L45.500 8 L42.500 11.500 L39.500 8 Z" fill="#E6B84F"/>
+          </g>
+        </svg>
+        <span class="t-name">Dama</span><span class="t-ar" lang="ar" dir="rtl">الضامة المغربية</span>
+        <span class="t-sub">Moroccan checkers. Online with voice.</span>
+      </button>
+      <button class="tile" id="tile-ck" type="button" aria-label="Chkobba">
+        <svg viewBox="0 0 96 96" aria-hidden="true">
+          <rect x="4" y="4" width="88" height="88" rx="10" fill="#0F4F66"/><rect x="4" y="4" width="88" height="88" rx="10" fill="none" stroke="#E6B84F" stroke-width="2.500"/>
+          <g transform="rotate(-14 38 56)"><rect x="18" y="20" width="38" height="56" rx="4" fill="#F7EDD6" stroke="#BDAA82"/><text x="24" y="35" font-family="Georgia,serif" font-weight="700" font-size="13" fill="#1F1D1A">K</text><text x="38" y="58" font-size="22" text-anchor="middle" fill="#1F1D1A">♠</text></g>
+          <g transform="rotate(12 58 56)"><rect x="40" y="18" width="38" height="56" rx="4" fill="#F7EDD6" stroke="#BDAA82"/><text x="46" y="33" font-family="Georgia,serif" font-weight="700" font-size="13" fill="#C8281E">7</text><text x="59" y="56" font-size="24" text-anchor="middle" fill="#C8281E">♦</text></g>
+        </svg>
+        <span class="t-name">Chkobba</span><span class="t-ar" lang="ar" dir="rtl">الشكبة</span>
+        <span class="t-sub">Tunisian cards. 2 or 4 players.</span>
+      </button>
+    </div>
+      <div class="install" id="install-box" hidden>
+        <button class="btn primary" id="install" type="button">📲 Install the app on this phone</button>
+        <p class="hint" id="install-help" hidden></p>
+      </div>
+  </section>
+
+  <section id="menu" class="view" hidden>
+    <button class="ck-ico menu-back" id="menu-back" type="button">← All games</button>
     <svg class="medallion" viewBox="0 0 120 120" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round">
       <rect x="22" y="22" width="76" height="76"/>
       <rect x="22" y="22" width="76" height="76" transform="rotate(45 60 60)"/>
@@ -364,11 +549,12 @@
       <circle cx="60" cy="60" r="5" fill="currentColor"/>
     </svg>
     <div class="hero">
-      <h1>Moroccan Dama</h1>
-      <p class="ar" lang="ar" dir="rtl">الضامة المغربية</p>
+      <h1 id="hero-h1">Moroccan Dama</h1>
+      <p class="ar" id="hero-ar" lang="ar" dir="rtl">الضامة المغربية</p>
       <p class="sub">Capture is compulsory, the longest capture must be taken, and a crowned king flies the whole diagonal.</p>
     </div>
     <div class="setup">
+      <div class="setup-in" id="dama-setup">
       <button class="btn primary big" id="open-online" type="button">Play online with voice</button>
       <p class="hint hide-phone" style="margin-top:-8px">Open a private table, send your friend the link, and talk while you play.</p>
       <hr class="or">
@@ -396,9 +582,25 @@
       </fieldset>
       <div class="row"><button class="btn big" id="start" type="button">New Game</button></div>
       <div class="row small-row"><button class="btn" id="open-puzzles" type="button">Puzzles</button><button class="btn ghost" id="menu-rules" type="button">Rules</button><button class="btn ghost snd-toggle" type="button">Sound: on</button></div>
-      <div class="install" id="install-box" hidden>
-        <button class="btn primary" id="install" type="button">📲 Install the app on this phone</button>
-        <p class="hint" id="install-help" hidden></p>
+      </div>
+      <div class="setup-in" id="ck-setup" hidden>
+        <button class="btn big" id="ck-online" type="button">Play online with friends</button>
+        <p class="hint" id="ck-online-note" hidden>Online Chkobba tables come next. For now you can play against the computer.</p>
+        <hr class="or">
+        <fieldset>
+          <legend>Players</legend>
+          <div class="seg"><label><input type="radio" name="ckn" value="2" checked>2 players</label><label><input type="radio" name="ckn" value="4">4 players, teams</label></div>
+        </fieldset>
+        <fieldset>
+          <legend>Play to</legend>
+          <div class="seg"><label><input type="radio" name="ckt" value="11" checked>11 points</label><label><input type="radio" name="ckt" value="21">21 points</label></div>
+        </fieldset>
+        <fieldset>
+          <legend>Computer level</legend>
+          <div class="seg"><label><input type="radio" name="ckl" value="easy">Easy</label><label><input type="radio" name="ckl" value="normal" checked>Normal</label><label><input type="radio" name="ckl" value="strong">Strong</label></div>
+        </fieldset>
+        <div class="row"><button class="btn primary big" id="ck-start" type="button">Play against computer</button></div>
+        <div class="row small-row"><button class="btn ghost" id="ck-rules-btn" type="button">Rules</button><button class="btn ghost snd-toggle" type="button">Sound: on</button></div>
       </div>
     </div>
   </section>
@@ -521,6 +723,28 @@
       <button class="dk round more" id="dk-more" type="button" aria-label="Menu">⋯</button>
     </nav>
   </section>
+
+  <!-- ===================== chkobba ===================== -->
+  <section id="ck" class="view" hidden>
+    <div class="ck-wrap">
+      <div class="ck-bar"><button class="ck-ico" id="ck-menu" type="button">← Menu</button><div class="ck-score" id="ck-score"></div><button class="ck-ico" id="ck-help" type="button" aria-label="Rules">?</button></div>
+      <div class="ck-piles" id="ck-piles"></div>
+      <div class="seat top" id="ck-top"></div>
+      <div class="ck-mid">
+        <div class="seat left" id="ck-left" hidden></div>
+        <div class="ck-table" id="ck-table" aria-label="Cards on the table"></div>
+        <div class="ck-chk" id="ck-chk" hidden>Chkobba!</div>
+        <div class="ck-chk ck-haya" id="ck-haya" hidden>الحاية!</div>
+        <div class="seat right" id="ck-right" hidden></div>
+      </div>
+      <div class="ck-info">
+        <div class="ck-last" id="ck-last"></div>
+        <p class="ck-status" id="ck-status" role="status" aria-live="polite"></p>
+      </div>
+      <div class="ck-hand" id="ck-hand" aria-label="Your cards"></div>
+      <div class="ck-act"><button class="btn big" id="ck-act" type="button" disabled>Choose a card</button></div>
+    </div>
+  </section>
 </div>
 
 <!-- ===================== online overlay ===================== -->
@@ -577,6 +801,40 @@
 </div>
 
 <!-- ===================== rules overlay ===================== -->
+<div class="overlay" id="ck-cut" hidden>
+  <div class="dialog ck-dialog" role="dialog" aria-modal="true" aria-labelledby="ck-cut-t">
+    <h2 id="ck-cut-t">You cut the deck</h2>
+    <p class="lead">This is the top card. Keep it as your first card, or throw it on the table.</p>
+    <div class="ck-cutcard" id="ck-cut-card"></div>
+    <p class="hint" id="ck-cut-name" style="text-align:center"></p>
+    <div class="row"><button class="btn primary big" id="ck-keep" type="button">Keep it</button><button class="btn big" id="ck-throw" type="button">Throw it</button></div>
+  </div>
+</div>
+<div class="overlay" id="ck-deal" hidden>
+  <div class="dialog ck-dialog" role="dialog" aria-modal="true" aria-labelledby="ck-deal-title">
+    <h2 id="ck-deal-title">Deal finished</h2>
+    <table class="ck-cmp" id="ck-deal-cmp"></table>
+    <ul class="ck-items" id="ck-deal-list"></ul>
+    <div class="ck-total" id="ck-deal-total"></div>
+    <div class="row"><button class="btn primary big" id="ck-next" type="button">Next deal</button><button class="btn" id="ck-deal-menu" type="button">Main menu</button></div>
+  </div>
+</div>
+<div class="overlay" id="ck-rules" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ck-rules-t">
+    <h2 id="ck-rules-t">How Chkobba is played</h2>
+    <p class="lead">40 cards: Ace to 7, then Queen = 8, Jack = 9, King = 10. 2 players, or 4 in two teams.</p>
+    <ul>
+      <li><b>The deal.</b> The player before the dealer cuts, looks at the top card and keeps it or throws it on the table. The dealer then gives 3 cards to each player and puts 4 on the table. Later rounds are 3 cards each with nothing added to the table.</li>
+      <li><b>Your turn.</b> Play one card. If a card of the same value is on the table you must take it. Otherwise you may take any cards that add up to your card. If nothing can be taken the card stays on the table.</li>
+      <li><b>Chkobba.</b> Clearing the table scores 1 point, except on the very last play of the deal.</li>
+      <li><b>End of the deal.</b> The last player to take cards also takes what is left on the table.</li>
+      <li><b>Points.</b> Most cards, most diamonds, most 7s (then most 6s if tied), the 7 of diamonds, and each Chkobba.</li>
+      <li><b>Winning.</b> The first side to reach the target (11 or 21) wins.</li>
+    </ul>
+    <div class="row"><button class="btn primary" id="ck-rules-close" type="button">Got it</button></div>
+  </div>
+</div>
+
 <div class="overlay" id="rules" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="rules-title">
     <h2 id="rules-title">How Moroccan Dama is played</h2>
@@ -619,6 +877,9 @@
 </script>
 <script>
 /*AI*/
+</script>
+<script>
+/*CHKOBBA*/
 </script>
 <script>
 /*PUZZLES*/
@@ -705,8 +966,10 @@
 
   /* ---------- views ---------- */
   function show(view) {
+    $('#hub').hidden = view !== 'hub';
     $('#menu').hidden = view !== 'menu';
     $('#game').hidden = view !== 'game';
+    $('#ck').hidden = view !== 'ck';
     if (view !== 'game' && typeof dockClose === 'function' && dockTab) dockClose();
     try { window.scrollTo(0, 0); } catch (e) {}
   }
@@ -811,6 +1074,7 @@
       move: function (t) { tick(t, 0.045, 0.5, 1500); tone(t, 240, 0.08, 'triangle', 0.3, 150); },
       capture: function (t) { tick(t, 0.07, 0.8, 800); tone(t, 170, 0.16, 'sine', 0.6, 70); tone(t + 0.05, 360, 0.09, 'triangle', 0.22); },
       king: function (t) { [523, 659, 784, 1047].forEach(function (f, i) { tone(t + i * 0.09, f, 0.24, 'triangle', 0.28); }); },
+      haya: function (t) { [784, 988, 1175, 1568, 1976].forEach(function (f, i) { tone(t + i * 0.07, f, 0.5, 'sine', 0.26); tone(t + i * 0.07, f * 2, 0.35, 'sine', 0.08); }); tone(t + 0.4, 392, 0.7, 'triangle', 0.2); },
       join: function (t) { tone(t, 660, 0.14, 'sine', 0.3); tone(t + 0.12, 880, 0.2, 'sine', 0.3); },
       turn: function (t) { tone(t, 880, 0.18, 'sine', 0.22); },
       pop: function (t) { tone(t, 620, 0.09, 'sine', 0.25, 940); },
@@ -1560,14 +1824,19 @@
     var early = voice.early[id]; delete voice.early[id];
     if (early) early.forEach(function (d) { onSignal(id, d); });
     if (voice.track) { try { pr.trans.sender.replaceTrack(voice.track); } catch (e) {} }
-    pc.onicecandidate = function (e) { if (e.candidate && voice.peers[id] === pr) sig(id, { candidate: e.candidate }); };
+    pc.onicecandidate = function (e) { if (e.candidate && voice.peers[id] === pr) { var ty = (/ typ (\w+)/.exec(e.candidate.candidate || '') || [])[1]; if (ty) { pr.types = pr.types || {}; pr.types[ty] = 1; } sig(id, { candidate: e.candidate }); } };
     pc.onnegotiationneeded = function () {
-      if (pr.polite && !pc.remoteDescription) return;   // the other side makes the first offer; this avoids both calling at once
-      pr.making = true;
-      Promise.resolve().then(function () { return pc.setLocalDescription(); })
-        .then(function () { if (voice.peers[id] === pr) sig(id, { description: pc.localDescription }); })
-        .catch(function () {})
-        .then(function () { pr.making = false; });
+      // the polite side lets the other make the first call (so both do not call at once); if nobody calls within 1.5 s it calls itself
+      var delay = (pr.polite && !pc.remoteDescription) ? 1500 : 0;
+      setTimeout(function () {
+        if (voice.peers[id] !== pr) return;
+        if (delay && (pc.remoteDescription || pc.signalingState !== 'stable')) return;   // they called first
+        pr.making = true;
+        Promise.resolve().then(function () { return pc.setLocalDescription(); })
+          .then(function () { if (voice.peers[id] === pr) sig(id, { description: pc.localDescription }); })
+          .catch(function () {})
+          .then(function () { pr.making = false; });
+      }, delay);
     };
     pc.ontrack = function (e) {
       var stream = (e.streams && e.streams[0]) || new MediaStream([e.track]);
@@ -1580,9 +1849,10 @@
     };
     var tries = 0;                                // still not connected after a few seconds: try the route-finding again
     pr.timer = setInterval(function () {
-      if (voice.peers[id] !== pr || pc.connectionState === 'connected' || ++tries > 4) { clearInterval(pr.timer); return; }
+      if (voice.peers[id] !== pr || pc.connectionState === 'connected' || ++tries > 3) { clearInterval(pr.timer); return; }
       if (!pr.polite && pc.remoteDescription) { try { pc.restartIce(); } catch (e) {} }
-    }, 8000);
+    }, 15000);
+    pc.oniceconnectionstatechange = function () { if (voice.peers[id] === pr) renderVoice(); };
     pc.onconnectionstatechange = function () {
       if (voice.peers[id] !== pr) return;
       pr.conn = pc.connectionState;
@@ -1771,7 +2041,8 @@
     else if (linked === others.length) { dot += ' on'; txt = '<b>Connected.</b> ' + (sm ? 'You joined muted. Tap the hand to ask to speak.' : !voice.on ? 'Tap the microphone so they can hear you.' : voice.muted ? 'Your mic is muted.' : 'Your mic is live.'); }
     else txt = 'Connecting… ' + (voice.on ? 'Your mic is ready.' : 'Tap the microphone when you are ready.');
     dockSync();
-    $('#vc-stat').innerHTML = '<span class="' + dot + '"></span>' + txt + (voice.error ? '<br><b>' + esc(voice.error) + '</b>' : '');
+    var det = others.map(function (e) { var pr = voice.peers[e.id]; return pr ? esc(e.name) + ': ' + esc(pr.pc.iceConnectionState) + (pr.types ? ' (routes: ' + Object.keys(pr.types).join('/') + ')' : '') : ''; }).filter(Boolean).join(' · ');
+    $('#vc-stat').innerHTML = '<span class="' + dot + '"></span>' + txt + (voice.error ? '<br><b>' + esc(voice.error) + '</b>' : '') + (det ? '<br><small>Link: ' + det + '</small>' : '');
   }
 
   /* ---------- wiring ---------- */
@@ -2053,6 +2324,8 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && online() && !connected()) { net.needResume = true; netConnect(); } });
 
   /* ---------- start-up: resume a table after a refresh, or open an invite link ---------- */
+/*CKUI*/
+
   (function boot() {
     var raw = location.hash || '';
     var watchLink = /\/watch/i.test(raw);
@@ -2066,6 +2339,9 @@
     if (hash.length === 5) { clearSession(); autoJoin(hash, watchLink); }
   })();
 })();
+</script>
+<script>
+/*I18N*/
 </script>
 </body>
 </html>

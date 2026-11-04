@@ -104,3 +104,13 @@ The menu always shows "Install the app on this phone" on Android and iPhone. On 
 prompt. Where a browser gives no prompt (iPhone, or a link opened inside WhatsApp / Instagram), it shows the exact steps.
 Links opened inside another app cannot install anything: open them in Safari (iPhone) or Chrome (Android) first.
 The menu is also one fixed screen on phones, with page bounce and pull-to-refresh switched off.
+
+### Voice across different mobile networks (free relay)
+
+Most pairs connect directly, but some mobile carriers block direct calls and need a relay (TURN).
+The easiest free option is Metered (20 GB a month free):
+
+1. Sign up at metered.ca, create an app, and copy the app name (the part before `.metered.live`) and an API key.
+2. In Hostinger, open your Node.js app, then Environment variables, and add:
+   `METERED_APP` = your app name, and `METERED_API_KEY` = your API key.
+3. Redeploy. The server log shows `Metered relay: N servers loaded`, and voice then works across networks.

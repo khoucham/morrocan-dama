@@ -91,7 +91,8 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
 
   await test('player A opens the online dialog, creates a table and sees the code and invite link', async () => {
     A = await open(port);
-    assert(visible(A, '#menu'));
+    assert(visible(A, '#hub') && !visible(A, '#menu'), 'the home screen shows the games');
+    click(A, '#tile-dama'); assert(visible(A, '#menu') && !visible(A, '#hub'));
     click(A, '#open-online');
     assert(visible(A, '#online'));
     $(A, '#nick').value = 'Mohamed';
@@ -500,6 +501,36 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
     await until(() => visible(Z, '#online') && /No table with that code/.test(txt(Z, '#online-err')), 3000, 'error dialog');
     assert(!visible(Z, '#joining'));
     Z.close();
+  });
+
+  await test('Chkobba: pick the game on the home screen, play whole games against the computer (2 and 4 players)', async () => {
+    for (const players of ['2', '4']) {
+      const K = await open(port);
+      K.__ckFast = true;
+      assert(visible(K, '#hub') && /Pick a game/.test(txt(K, '#hub h1')));
+      click(K, '#tile-ck');
+      assert(visible(K, '#ck-setup') && !visible(K, '#dama-setup'), 'chkobba setup shown');
+      assert(/Chkobba/.test(txt(K, '#hero-h1')));
+      K.document.querySelector('input[name="ckn"][value="' + players + '"]').checked = true;
+      click(K, '#ck-start');
+      assert(visible(K, '#ck'));
+      let guard = 0;
+      while (guard++ < 4000) {
+        if (visible(K, '#ck-cut')) { click(K, Math.random() < 0.5 ? '#ck-keep' : '#ck-throw'); await new Promise(r => setTimeout(r, 12)); continue; }
+        if (visible(K, '#ck-deal')) { if (K.__ck().g.over) break; click(K, '#ck-next'); continue; }
+        const ck = K.__ck();
+        if (!ck.busy && ck.g.phase === 'play' && ck.g.turn === 0) {
+          const cards = K.document.querySelectorAll('#ck-hand .pc'); click(K, '#ck-hand .pc[data-id="' + cards[0].getAttribute('data-id') + '"]');
+          let k2 = K.__ck();
+          if (k2.opts.length > 1) k2.opts[0].forEach(id => click(K, '#ck-table .pc[data-id="' + id + '"]'));
+          click(K, '#ck-act');
+        } else await new Promise(r => setTimeout(r, 6));
+      }
+      const g = K.__ck().g;
+      assert(g.over && g.scores[g.winner] >= g.target, players + ' players: game finished with a winner');
+      assert(/win|wins/i.test(txt(K, '#ck-deal-title')));
+      K.close();
+    }
   });
 
   W.close();
