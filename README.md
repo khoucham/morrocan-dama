@@ -48,8 +48,7 @@ Get TURN credentials from a TURN provider (many have a free tier), then start th
 
 ## Files
 
-    server.js              entry file, starts the server
-    app.js                 table server + static page
+    server.js              table server + static page
     src/engine.js          rules (shared by server and browser)
     src/ai.js              computer opponent (browser only)
     src/client.template.html   the page; build.js inlines the engine and AI into public/index.html
