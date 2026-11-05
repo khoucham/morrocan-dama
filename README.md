@@ -11,7 +11,7 @@ Also plays against the computer or two players on one device.
 
 Open http://localhost:3000 in two browser windows (or on two devices on the same wifi using
 your computer's address). In one, choose **Play online with voice**, then **Create table**.
-In the other, enter the code. Both press **Start voice** and allow the microphone.
+In the other, open the invite link (it takes you straight to the table). Both tap the big microphone button and allow the microphone.
 
 ## Put it on the internet
 
@@ -43,12 +43,18 @@ Get TURN credentials from a TURN provider (many have a free tier), then start th
   with nobody connected. Restarting the server closes all tables.
 - A refresh or dropped connection resumes the same table automatically (token kept in the tab).
 - Voice uses WebRTC. The server only relays the connection setup messages. Audio never touches it.
+- **Watchers.** The host's invite box has a second link ending in `/watch`. Up to 4 watchers can join; they see the
+  board live, cannot play, and join the call **muted**. The host sees a Mute/Unmute button under each watcher, and a
+  watcher can raise a hand to ask to speak. Everyone connects to everyone (a mesh), so keep it to about 6 people.
+  Muting is enforced by the server's list: the muted person's microphone is switched off and everyone else's
+  browser stops playing their audio. Opening the play link when both seats are taken joins as a watcher automatically.
 - Rematch swaps colours so the other player moves first.
 - The board is mirrored so the long 8-square diagonal runs from each player's bottom-right corner to the top-left. Move notation (a-h, 1-8) follows that layout, with file a on the left.
 
 ## Files
 
-    server.js              table server + static page
+    server.js              entry file, starts the server
+    app.js                 table server + static page
     src/engine.js          rules (shared by server and browser)
     src/ai.js              computer opponent (browser only)
     src/client.template.html   the page; build.js inlines the engine and AI into public/index.html
@@ -65,3 +71,46 @@ Voice is peer-to-peer, so it is not affected either way.
 - Entry file: `server.js`, Node 22, **no build command** (`public/index.html` is already built and committed).
 - After editing anything in `src/`, run `npm run build` and commit the new `public/index.html`.
 - Tests run automatically on every push (GitHub Actions: `.github/workflows/test.yml`).
+
+## Phone app, sounds, chat
+
+- **Installable app.** The page has a manifest, icons and a small service worker (`public/sw.js`). On Android/Chrome
+  an "Install the app" button appears on the menu; on iPhone the menu shows "Share, then Add to Home Screen". Once
+  installed it opens full screen, and the computer / two-player modes also start with no connection.
+  The icons are made from `tools/icon.svg` with `node tools/make-icons.js` (needs playwright; the PNGs are committed).
+- **Sounds.** Synthesised in the browser (no audio files): move, capture, crown, friend joins, your turn, chat pop,
+  win / lose / draw. One switch (Sound: on/off) is remembered on each device.
+- **Chat and reactions.** Everyone at the table, watchers included, can write (200 characters, two messages a second).
+  The last 30 messages are kept so latecomers see them. Six quick reactions float over the board.
+
+## Clock, hint, puzzles
+
+- **Game clock.** When creating a table choose No clock, 3, 5 or 10 minutes each. The server keeps the time; it only runs
+  while both players are connected, and running out of time loses the game.
+- **Hint.** The Hint button on a local game shows the computer's best move (depth 12, about one second).
+- **Tactic puzzles.** 16 puzzles, each with exactly one winning first move (checked by the engine in
+  `test/puzzles.test.js`). Progress is saved on the device. Regenerate with `node tools/make-puzzles.js`.
+
+## Phone layout
+
+On screens up to 860px wide the game is one fixed screen with no page scrolling. The board, both player tags and the
+status line stay in view; a bottom bar holds the microphone (tap to mute / unmute), who is at the table, a message box,
+quick reactions and the menu. Chat, voice, invite link and the menu open as sheets above the bar. New messages from
+others also pop up briefly above the bar. Local games get Hint and Undo buttons in the bar.
+
+## Installing on a phone
+
+The menu always shows "Install the app on this phone" on Android and iPhone. On Chrome for Android it opens the real install
+prompt. Where a browser gives no prompt (iPhone, or a link opened inside WhatsApp / Instagram), it shows the exact steps.
+Links opened inside another app cannot install anything: open them in Safari (iPhone) or Chrome (Android) first.
+The menu is also one fixed screen on phones, with page bounce and pull-to-refresh switched off.
+
+### Voice across different mobile networks (free relay)
+
+Most pairs connect directly, but some mobile carriers block direct calls and need a relay (TURN).
+The easiest free option is Metered (20 GB a month free):
+
+1. Sign up at metered.ca, create an app, and copy the app name (the part before `.metered.live`) and an API key.
+2. In Hostinger, open your Node.js app, then Environment variables, and add:
+   `METERED_APP` = your app name, and `METERED_API_KEY` = your API key.
+3. Redeploy. The server log shows `Metered relay: N servers loaded`, and voice then works across networks.

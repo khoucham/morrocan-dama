@@ -6,7 +6,11 @@ const path = require('path');
 const read = p => fs.readFileSync(path.join(__dirname, p), 'utf8');
 const engine = read('src/engine.js').replace("if (typeof module !== 'undefined') module.exports = DamaEngine;", '');
 const ai = read('src/ai.js').replace("if (typeof module !== 'undefined') module.exports = DamaAI;", '');
-const out = read('src/client.template.html').split('/*ENGINE*/').join(engine).split('/*AI*/').join(ai);
+const puzzles = read('src/puzzles.js').replace("if (typeof module !== 'undefined') module.exports = DAMA_PUZZLES;", '');
+const ck = read('src/chkobba.js').replace("if (typeof module !== 'undefined') module.exports = Chkobba;", '');
+const ckui = read('src/chkobba-ui.js');
+const i18n = read('src/i18n.js');
+const out = read('src/client.template.html').split('/*ENGINE*/').join(engine).split('/*AI*/').join(ai).split('/*PUZZLES*/').join(puzzles).split('/*CHKOBBA*/').join(ck).split('/*CKUI*/').join(ckui).split('/*I18N*/').join(i18n);
 
 fs.mkdirSync(path.join(__dirname, 'public'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'public/index.html'), out);

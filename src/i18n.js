@@ -25,6 +25,11 @@
     'Chat': 'الدردشة', 'Send': 'إرسال', 'Show invite link': 'أظهر رابط الدعوة', 'Hint': 'تلميح', 'Try again': 'حاول مرة أخرى', 'Show answer': 'أظهر الحل',
     'Next puzzle': 'اللغز التالي', 'All puzzles': 'كل الألغاز', 'Undo move': 'تراجع عن النقلة', 'Restart': 'إعادة', 'Offer draw': 'اعرض التعادل', 'Resign': 'استسلام',
     'Main menu': 'القائمة الرئيسية', 'Players agree a draw': 'اتفق اللاعبان على التعادل', 'Moves': 'النقلات', 'Undo': 'تراجع', '← Menu': '← القائمة',
+    'Empty': 'فارغ', '1 seated · 1 to go': 'جالس 1 · ينقص 1', '2 seated · ready': 'جالسان · جاهزان', 'Send the code on WhatsApp': 'أرسل الرمز عبر واتساب',
+    'Or tell them the code': 'أو أخبرهم بالرمز', 'What can I do?': 'ماذا أفعل؟', 'Invite watchers': 'ادعُ مشاهدين',
+    'Send the link on WhatsApp. They tap it and they are at the table, with no sign-up. Or give them the code to type under “Have a code?”. Voice and chat start when they arrive.': 'أرسل الرابط عبر واتساب. يضغطون عليه فيصبحون على الطاولة بدون تسجيل. أو أعطهم الرمز ليكتبوه تحت «عندك رمز؟». يبدأ الصوت والدردشة عندما يصلون.',
+    'Moroccan 8×8 · no clock': 'مغربية 8×8 · بدون ساعة',
+    'Leave the table?': 'مغادرة الطاولة؟', 'Back to the menu?': 'العودة إلى القائمة؟', 'Your friend will see that you left.': 'سيرى صديقك أنك غادرت.', 'The game is over.': 'انتهت اللعبة.', 'The game on this device will be lost.': 'ستضيع اللعبة على هذا الجهاز.', 'Stay': 'ابقَ', 'Leave': 'غادر',
     'Chkobba!': 'شكبة!', '7aya!': 'الحاية!', 'Choose a card': 'اختر ورقة',
     'Open a private table and send your friend the link. Tap the microphone to talk while you play. Friends can also watch, and you choose who can talk.': 'افتح طاولة خاصة وأرسل الرابط لصديقك. اضغط على الميكروفون لتتكلم أثناء اللعب. يمكن للأصدقاء أيضًا المشاهدة، وأنت تختار من يتكلم.',
     'Your name': 'اسمك', 'Game clock (for a table you create)': 'ساعة اللعب (للطاولة التي تنشئها)', 'No clock': 'بدون ساعة', '3 minutes each': '3 دقائق لكل لاعب',
@@ -104,6 +109,7 @@
   function card(s) { return '\u2066' + s.replace(/\b(King|Queen|Jack|Ace)\b/g, function (w) { return { King: 'ملك', Queen: 'ملكة', Jack: 'ولد', Ace: 'آس' }[w]; }) + '\u2069'; }
   function verb(who, you, f, m) { return who === 'You' ? you : FEM[who] ? f : m; }
   var PAT = [
+    [/^Moroccan 8×8 · (\d+) min each$/, function (m) { return 'مغربية 8×8 · ' + m[1] + ' دقائق لكل لاعب'; }],
     [/^to (\d+)$/, function (m) { return 'إلى ' + m[1]; }],
     [/^Deck (\d+)$/, function (m) { return 'الورق ' + m[1]; }],
     [/^(.+?) took with (.+?)( — Chkobba!)?\.$/, function (m) { return nm(m[1]) + ' ' + verb(m[1], 'أخذتَ', 'أخذت', 'أخذ') + ' بـ ' + card(m[2]) + (m[3] ? ' — شكبة!' : '.') + (/New cards/.test(m[0]) ? '' : ''); }],
