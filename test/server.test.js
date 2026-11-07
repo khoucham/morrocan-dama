@@ -497,6 +497,131 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
     await fast.close();
   });
 
+
+  /* ---------- Chkobba online ---------- */
+  const CKE = require('../src/chkobba.js');
+  async function ckTable(n, target) {
+    const cs = []; for (let i = 0; i < n; i++) { const c = client(port); await c.open(); cs.push(c); }
+    cs[0].send({ t: 'ckcreate', name: 'Host', n, target });
+    const snaps = [await cs[0].next('ckjoined')];
+    const code = snaps[0].code;
+    for (let i = 1; i < n; i++) { cs[i].send({ t: 'join', code, name: 'P' + (i + 1) }); snaps.push(await cs[i].next('ckjoined')); }
+    const starts = []; for (const c of cs) starts.push((await c.next('ckstate')).view);
+    return { cs, snaps, starts, code };
+  }
+  /* play the current deal to its end with any legal moves; returns the last ckmoved event */
+  async function ckPlayOut(T) {
+    let view = T.views, last = null;
+    for (let guard = 0; guard < 80; guard++) {
+      const seat = view[0].turn; const mine = view[seat];
+      let play = null;
+      for (const card of mine.hand) { const o = CKE.captures(mine.table, card); play = { card, take: o.length ? o[0] : [] }; break; }
+      T.cs[seat].send({ t: 'ckplay', card: play.card, take: play.take });
+      const msgs = []; for (const c of T.cs) msgs.push(await c.next('ckmoved'));
+      view = msgs.map(m => m.view); last = msgs[0].ev;
+      T.views = view;
+      if (last.ended) return last;
+    }
+    throw new Error('deal did not end');
+  }
+
+  await test('Chkobba table, 2 players: seats fill, the game starts and only the cutter sees the cut card', async () => {
+    const T = await ckTable(2, 11);
+    assert.strictEqual(T.snaps[0].seat, 0); assert.strictEqual(T.snaps[1].seat, 1);
+    assert(T.snaps[0].host && !T.snaps[1].host);
+    const v = T.starts;
+    assert.strictEqual(v[0].phase, 'cut'); assert.strictEqual(v[0].target, 11);
+    const cutter = v[0].cutter;
+    assert(Number.isInteger(v[cutter].cutCard), 'the cutter sees the card');
+    assert.strictEqual(v[1 - cutter].cutCard, null, 'the other player does not');
+    assert.strictEqual(v[0].deck, 39);
+    T.cs.forEach(c => c.ws.close());
+  });
+
+  await test('Chkobba: hands stay private, only the cutter can cut, and the turn order is enforced', async () => {
+    const T = await ckTable(2, 21);
+    const cutter = T.starts[0].cutter, other = 1 - cutter;
+    T.cs[other].send({ t: 'ckcut', keep: true });
+    assert.strictEqual((await T.cs[other].next('error')).code, 'illegal');
+    T.cs[cutter].send({ t: 'ckcut', keep: true });
+    const m = []; for (const c of T.cs) m.push(await c.next('ckmoved'));
+    assert.strictEqual(m[0].ev.k, 'cut');
+    for (let s = 0; s < 2; s++) {
+      const v = m[s].view;
+      assert.strictEqual(v.phase, 'play');
+      assert.strictEqual(v.hand.length, v.handN[s], 'own hand is sent in full');
+      assert.strictEqual(v.table.length, 4);
+    }
+    // a view carries only the receiver's own cards; the other hand is just a count
+    const a = m[0].view, b = m[1].view;
+    assert.deepStrictEqual(Object.keys(a).sort(), Object.keys(b).sort());
+    assert.deepStrictEqual(a.handN, [3, 3]);
+    assert(a.hand.every(c => b.hand.indexOf(c) < 0), 'no card is in both hands');
+    const turn = a.turn, wrong = 1 - turn;
+    T.cs[wrong].send({ t: 'ckplay', card: m[wrong].view.hand[0], take: [] });
+    assert.strictEqual((await T.cs[wrong].next('error')).code, 'illegal');
+    T.cs[turn].send({ t: 'ckplay', card: 39 === a.hand[0] ? 38 : 99, take: [] });   // a card not in hand
+    assert.strictEqual((await T.cs[turn].next('error')).code, 'illegal');
+    T.cs.forEach(c => c.ws.close());
+  });
+
+  await test('Chkobba: a whole deal can be played, scores arrive, and both players ready up for the next one', async () => {
+    const T = await ckTable(2, 21);
+    const cutter = T.starts[0].cutter;
+    T.cs[cutter].send({ t: 'ckcut', keep: false });
+    const m = []; for (const c of T.cs) m.push(await c.next('ckmoved'));
+    T.views = m.map(x => x.view);
+    const end = await ckPlayOut(T);
+    assert(end.ended && end.score && Array.isArray(end.score.points));
+    const v = T.views[0];
+    assert.strictEqual(v.phase, 'scored');
+    assert.strictEqual(v.stats[0].cards + v.stats[1].cards, 40, 'every card ended up in a pile');
+    assert.strictEqual(v.scores[0] + v.scores[1], end.score.points[0] + end.score.points[1]);
+    T.cs[0].send({ t: 'ckready' });
+    const r = await T.cs[1].next('ckready'); assert.deepStrictEqual(r.ready, [0]);
+    T.cs[1].send({ t: 'ckready' });
+    const st = []; for (const c of T.cs) st.push(await c.next('ckstate'));
+    assert.strictEqual(st[0].view.phase, 'cut'); assert.strictEqual(st[0].view.deals, 2);
+    T.cs.forEach(c => c.ws.close());
+  });
+
+  await test('Chkobba, 4 players in two teams: seats, teammates, a fifth person watches, and reconnecting gives the same hand back', async () => {
+    const T = await ckTable(4, 11);
+    assert.deepStrictEqual(T.snaps.map(s => s.seat), [0, 1, 2, 3]);
+    const late = client(port); await late.open();
+    late.send({ t: 'join', code: T.code, name: 'Late' });
+    assert.strictEqual((await late.next('error')).code, 'full');
+    late.send({ t: 'watch', code: T.code, name: 'Late' });
+    const w = await late.next('ckjoined');
+    assert.strictEqual(w.role, 'watcher'); assert.deepStrictEqual(w.view.hand, []);
+    const cutter = T.starts[0].cutter;
+    T.cs[cutter].send({ t: 'ckcut', keep: true });
+    const m = []; for (const c of T.cs) m.push(await c.next('ckmoved'));
+    assert.strictEqual(m[0].view.handN.length, 4);
+    // seat 2 drops and comes back with its token
+    const back = client(port); await back.open();
+    T.cs[2].ws.close(); await new Promise(r => setTimeout(r, 120));
+    back.send({ t: 'resume', code: T.code, token: T.snaps[2].token });
+    const again = await back.next('ckjoined');
+    assert.strictEqual(again.seat, 2); assert.deepStrictEqual(again.view.hand, m[2].view.hand);
+    [...T.cs, late, back].forEach(c => c.ws.close());
+  });
+
+  await test('Chkobba: a player who leaves frees the seat, the host seat moves on, and an empty table closes', async () => {
+    const T = await ckTable(2, 11);
+    T.cs[0].send({ t: 'leave' });
+    let crowd; do { crowd = await T.cs[1].next('crowd'); } while (crowd.list.length !== 1);
+    assert.strictEqual(crowd.list.length, 1); assert.strictEqual(crowd.host, crowd.list[0].id);
+    const nu = client(port); await nu.open();
+    nu.send({ t: 'join', code: T.code, name: 'New' });
+    const j = await nu.next('ckjoined'); assert.strictEqual(j.seat, 0);
+    T.cs[1].send({ t: 'leave' }); nu.send({ t: 'leave' });
+    await new Promise(r => setTimeout(r, 150));
+    const c2 = client(port); await c2.open(); c2.send({ t: 'join', code: T.code, name: 'x' });
+    assert.strictEqual((await c2.next('error')).code, 'not_found');
+    [T.cs[0], T.cs[1], nu, c2].forEach(c => c.ws.close());
+  });
+
   a.close(); b.close();
   await srv.close();
   console.log('\nALL ' + n + ' SERVER TESTS PASSED');

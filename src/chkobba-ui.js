@@ -75,7 +75,24 @@
 
   /* ----- a game ----- */
   function ckNames(n) { return n === 2 ? ['You', 'Computer'] : ['You', 'Karim', 'Salma', 'Youssef']; }
-  function ckTeam(t) { return CK.n === 2 ? (t === 0 ? 'You' : 'Computer') : (t === 0 ? 'You & Salma' : 'Karim & Youssef'); }
+  function ckMembers(q) { var n = CK.n, out = []; for (var s = 0; s < n; s++) if ((n === 4 ? s % 2 : s) === q) out.push(s); return out; }
+  function ckTeam(t) {
+    if (!CK.online) return CK.n === 2 ? (t === 0 ? 'You' : 'Computer') : (t === 0 ? 'You & Salma' : 'Karim & Youssef');
+    return ckMembers(t).map(function (s) { return CK.names[s]; }).join(' & ');
+  }
+  function ckTeamShort(t) {
+    if (!CK.online) return CK.n === 2 ? (t === 0 ? 'You' : 'Computer') : (t === 0 ? 'Us' : 'Them');
+    if (CK.n === 2) return CK.names[t];
+    return CK.watch ? 'Team ' + (t + 1) : (t === 0 ? 'Us' : 'Them');
+  }
+  function ckYou(s) { return s === 0 && !(CK.online && CK.watch); }
+  /* what each team has taken so far: counted from the piles when I deal it, or sent by the server at an online table */
+  function ckStats(g, q) {
+    if (g.stats) { var s = g.stats[q]; return { cards: s.cards, coins: s.coins, sevens: s.sevens, sixes: s.sixes, haya: !!s.haya, chk: g.chk[q] || 0 }; }
+    var pl = g.piles[q] || [];
+    return { cards: pl.length, coins: pl.filter(function (c) { return CKE.suit(c) === 0; }).length, sevens: pl.filter(function (c) { return CKE.rank(c) === 7; }).length,
+      sixes: pl.filter(function (c) { return CKE.rank(c) === 6; }).length, haya: pl.indexOf(CKE.HAYA) >= 0, chk: g.chk[q] || 0 };
+  }
   function ckStart(n, target, level) {
     if (CK) CK.token++;
     var token = CK ? CK.token : 0;
@@ -86,8 +103,16 @@
   function ckLater(fn, ms) { var t = CK.token; setTimeout(function () { if (CK && CK.token === t) fn(); }, ckWait(ms)); }
   function ckCutPhase() {
     var g = CK.g; CK.busy = true; CK.sel = null; CK.pick = []; CK.opts = [];
-    CK.msg = CK.names[g.dealer] + (g.dealer === 0 ? ' deal' : ' deals') + '. ' + CK.names[g.cutter] + (g.cutter === 0 ? ' cut the deck…' : ' cuts the deck…');
+    CK.msg = CK.names[g.dealer] + (ckYou(g.dealer) ? ' deal' : ' deals') + '. ' + CK.names[g.cutter] + (ckYou(g.cutter) ? ' cut the deck…' : ' cuts the deck…');
     ckRender();
+    if (CK.online) {
+      if (ckYou(g.cutter) && g.cutCard != null) {
+        $('#ck-cut-card').innerHTML = cardHtml(g.cutCard, 'big', 'div');
+        $('#ck-cut-name').textContent = cardName(g.cutCard);
+        ckLater(function () { if (CK.g.phase === 'cut') openOverlay('#ck-cut'); }, 500);
+      }
+      return;
+    }
     if (g.cutter === 0) {
       $('#ck-cut-card').innerHTML = cardHtml(g.cutCard, 'big', 'div');
       $('#ck-cut-name').textContent = cardName(g.cutCard);
@@ -103,24 +128,38 @@
   }
   function ckNext() {
     var g = CK.g;
+    if (CK.online) {
+      CK.anim = false;
+      if (g.phase === 'play') {
+        if (g.turn === 0 && !CK.watch) { CK.busy = false; if (!CK.last) CK.msg = 'Your turn.'; ckRender(); sfx.play('turn'); try { if (navigator.vibrate && document.hidden) navigator.vibrate(60); } catch (e) {} }
+        else { CK.busy = true; ckRender(); }
+      }
+      ckDrain();
+      return;
+    }
     if (g.phase !== 'play') return;
     if (g.turn === 0) { CK.busy = false; if (!CK.last) CK.msg = 'Your turn.'; ckRender(); sfx.play('turn'); }
     else { CK.busy = true; ckRender(); ckLater(function () { var m = aiMove(g, g.turn); ckDo(g.turn, m.card, m.take); }, 1000); }
   }
   function ckDo(seat, card, take) {
-    var g = CK.g, before = g.table.slice(), r = CKE.play(g, seat, card, take), nm = CK.names[seat];
+    var g = CK.g, before = g.table.slice(), r = CKE.play(g, seat, card, take);
+    ckShowMove(seat, card, take, r, before);
+  }
+  function ckShowMove(seat, card, take, r, before) {
+    var g = CK.g, nm = CK.names[seat];
+    CK.anim = true;
     // Show the move on the table first: the played card lands, the cards taken glow, then they fly to the one who took them.
     var dir = seat === 0 ? 'down' : g.n === 2 ? 'up' : ['down', 'right', 'up', 'left'][seat];
     CK.show = { table: before.concat([card]), played: card, took: take.slice(), dir: dir };
-    CK.last = { seat: seat, card: card, took: take.slice(), chk: r.chkobba, text: nm + (seat === 0 ? ' took ' : ' took ') };
-    CK.msg = take.length ? nm + ' took with ' + cardShort(card) + (r.chkobba ? ' — Chkobba!' : '.') : nm + (seat === 0 ? ' put down ' : ' puts down ') + cardShort(card) + '.';
-    if (!take.length && seat !== 0) CK.msg = nm + ' put down ' + cardShort(card) + '.';
+    CK.last = { seat: seat, card: card, took: take.slice(), chk: r.chkobba, text: nm + ' took ' };
+    CK.msg = take.length ? nm + ' took with ' + cardShort(card) + (r.chkobba ? ' — Chkobba!' : '.') : nm + (ckYou(seat) ? ' put down ' : ' puts down ') + cardShort(card) + '.';
+    if (!take.length && !ckYou(seat)) CK.msg = nm + ' put down ' + cardShort(card) + '.';
     if (r.dealtMore) CK.msg += g.deck.length ? ' New cards.' : ' New cards — last round! The last play can’t score a Chkobba.';
     sfx.play(r.chkobba ? 'king' : take.length ? 'capture' : 'move');
     if (take.length && (card === CKE.HAYA || take.indexOf(CKE.HAYA) >= 0)) { sfx.play('haya', r.chkobba ? 0.55 : 0.12); CK.msg += ' 7♦!'; CK.last.haya = true; }   // the seven of diamonds gets its own chime
     CK.sel = null; CK.pick = []; CK.opts = [];
     ckRender();
-    if (r.ended) ckLater(function () { CK.show = null; ckRender(); ckShowDeal(r); }, 1700);
+    if (r.ended) ckLater(function () { CK.show = null; CK.anim = false; ckRender(); ckShowDeal(r); ckDrain(); }, 1700);
     else if (take.length) {
       var long = r.chkobba || CK.last.haya ? 1100 : 0;
       ckLater(function () { var els = document.querySelectorAll('#ck-table .pc.took, #ck-table .pc.played'); for (var i = 0; i < els.length; i++) els[i].classList.add('fly-' + dir); }, 1150 + long);
@@ -137,6 +176,7 @@
   function ckSelect(id) {
     var g = CK.g;
     if (CK.busy || g.phase !== 'play' || g.turn !== 0) return;
+    if (CK.online && (CK.watch || !G || !G.peer)) return;
     if (CK.sel === id) { ckConfirm(); return; }
     CK.sel = id; CK.opts = CKE.captures(g.table, id); CK.pick = CK.opts.length === 1 ? CK.opts[0].slice() : [];
     ckRender();
@@ -149,43 +189,56 @@
   }
   function ckConfirm() {
     if (CK.busy || !ckReady()) return;
-    CK.busy = true; ckDo(0, CK.sel, CK.pick.slice());
+    CK.busy = true;
+    if (CK.online) { netSend({ t: 'ckplay', card: CK.sel, take: CK.pick.slice() }); ckRender(); return; }
+    ckDo(0, CK.sel, CK.pick.slice());
   }
 
   /* ----- the end of a deal and of the game ----- */
   var ITEM = { cards: 'Most cards', coins: 'Most diamonds', sevens: 'Most sevens', haya: '7 of diamonds', chkobba: 'Chkobba' };
   function ckShowDeal(r) {
-    var g = CK.g, T = g.n === 4 ? 2 : g.n, rows = '';
-    r.score.items.forEach(function (it) {
-      rows += '<li class="' + (it.team === 0 ? 'us' : 'them') + '"><span>' + ITEM[it.what] + (it.count > 1 ? ' ×' + it.count : '') + '</span><b>' + ckTeam(it.team) + ' +' + (it.count || 1) + '</b></li>';
+    var g = CK.g, rows = '';
+    var items = r && r.score ? r.score.items : [];
+    items.forEach(function (it) {
+      rows += '<li class="' + (it.team === 0 ? 'us' : 'them') + '"><span>' + ITEM[it.what] + (it.count > 1 ? ' ×' + it.count : '') + '</span><b>' + esc(ckTeam(it.team)) + ' +' + (it.count || 1) + '</b></li>';
     });
     (function () {
-      var h = '', T2 = g.n === 4 ? 2 : g.n;
-      function cnt(q, f) { return (g.piles[q] || []).filter(f).length; }
-      var rowsD = [['Cards', function (c) { return true; }], ['Diamonds', function (c) { return CKE.suit(c) === 0; }], ['Sevens', function (c) { return CKE.rank(c) === 7; }], ['Sixes', function (c) { return CKE.rank(c) === 6; }]];
+      var h = '', s0 = ckStats(g, 0), s1 = ckStats(g, 1);
+      var rowsD = [['Cards', 'cards'], ['Diamonds', 'coins'], ['Sevens', 'sevens'], ['Sixes', 'sixes']];
       h += '<tr><th></th><th>' + esc(ckTeam(0)) + '</th><th>' + esc(ckTeam(1)) + '</th></tr>';
-      rowsD.forEach(function (rw) { var a = cnt(0, rw[1]), b = cnt(1, rw[1]); h += '<tr><td>' + rw[0] + '</td><td class="' + (a > b ? 'win' : '') + '">' + a + '</td><td class="' + (b > a ? 'win' : '') + '">' + b + '</td></tr>'; });
-      h += '<tr><td>7♦</td><td>' + ((g.piles[0] || []).indexOf(CKE.HAYA) >= 0 ? '✓' : '') + '</td><td>' + ((g.piles[1] || []).indexOf(CKE.HAYA) >= 0 ? '✓' : '') + '</td></tr>';
-      h += '<tr><td>Chkobba</td><td>' + (g.chk[0] || 0) + '</td><td>' + (g.chk[1] || 0) + '</td></tr>';
+      rowsD.forEach(function (rw) { var a = s0[rw[1]], b = s1[rw[1]]; h += '<tr><td>' + rw[0] + '</td><td class="' + (a > b ? 'win' : '') + '">' + a + '</td><td class="' + (b > a ? 'win' : '') + '">' + b + '</td></tr>'; });
+      h += '<tr><td>7♦</td><td>' + (s0.haya ? '✓' : '') + '</td><td>' + (s1.haya ? '✓' : '') + '</td></tr>';
+      h += '<tr><td>Chkobba</td><td>' + s0.chk + '</td><td>' + s1.chk + '</td></tr>';
       $('#ck-deal-cmp').innerHTML = h;
     })();
-    $('#ck-deal-title').textContent = g.over ? (g.winner === 0 ? (CK.n === 2 ? 'You win!' : 'Your team wins!') : (CK.n === 2 ? 'Computer wins' : 'They win')) : 'Deal finished';
-    $('#ck-deal-list').innerHTML = rows || '<li><span>No points this deal</span></li>';
-    $('#ck-deal-total').innerHTML = '<span class="us"><b>' + g.scores[0] + '</b>' + ckTeam(0) + '</span><span class="to">to ' + g.target + '</span><span class="them"><b>' + g.scores[1] + '</b>' + ckTeam(1) + '</span>';
-    $('#ck-next').textContent = g.over ? 'Play again' : 'Next deal';
+    var title;
+    if (!g.over) title = 'Deal finished';
+    else if (CK.online) title = CK.watch ? ckTeam(g.winner) + (CK.n === 2 ? ' wins' : ' win') : g.winner === 0 ? (CK.n === 2 ? 'You win!' : 'Your team wins!') : (CK.n === 2 ? CK.names[1] + ' wins' : 'They win');
+    else title = g.winner === 0 ? (CK.n === 2 ? 'You win!' : 'Your team wins!') : (CK.n === 2 ? 'Computer wins' : 'They win');
+    $('#ck-deal-title').textContent = title;
+    $('#ck-deal-list').innerHTML = rows || (r && r.score ? '<li><span>No points this deal</span></li>' : '');
+    $('#ck-deal-total').innerHTML = '<span class="us"><b>' + g.scores[0] + '</b>' + esc(ckTeamShort(0)) + '</span><span class="to">to ' + g.target + '</span><span class="them"><b>' + g.scores[1] + '</b>' + esc(ckTeamShort(1)) + '</span>';
+    var nx = $('#ck-next');
+    nx.textContent = g.over ? 'Play again' : 'Next deal'; nx.disabled = false; nx.hidden = false;
+    $('#ck-deal-menu').textContent = 'Main menu'; $('#ck-ready').textContent = '';
+    if (CK.online) { $('#ck-deal-menu').textContent = 'Leave table'; ckoReadyNote(); }
     openOverlay('#ck-deal');
-    sfx.play(g.over ? (g.winner === 0 ? 'win' : 'lose') : 'turn');
+    sfx.play(g.over ? (g.winner === 0 && !CK.watch ? 'win' : CK.watch ? 'win' : 'lose') : 'turn');
     ckRender();
   }
 
   /* ----- drawing the screen ----- */
+  function ckAvatar(id) { var h = hashId(id); return { emoji: AVATARS[h % AVATARS.length], hue: h % 360 }; }
+  function ckChip(pe) { if (!pe) return ''; var av = ckAvatar(pe.id); return '<span class="sav" style="--hue:' + av.hue + '">' + av.emoji + '</span>'; }
   function ckSeat(el, seat, pos) {
     var g = CK.g, box = $(el);
     if (seat == null) { box.innerHTML = ''; box.hidden = true; return; }
     box.hidden = false;
-    var n = g.hands[seat].length, turn = g.turn === seat && g.phase === 'play';
-    box.className = 'seat ' + pos + (turn ? ' turn' : '');
-    box.innerHTML = '<span class="nm">' + esc(CK.names[seat]) + (g.dealer === seat ? ' <em>D</em>' : '') + '</span><span class="fan">' + backs(n) + '</span>';
+    var n = g.hands[seat] ? g.hands[seat].length : 0, turn = g.turn === seat && g.phase === 'play';
+    var pe = CK.online && CK.people ? CK.people[seat] : null;
+    box.className = 'seat ' + pos + (turn ? ' turn' : '') + (pe && !pe.online ? ' off' : '') + (pe && voice.speaking[pe.id] ? ' speaking' : '');
+    if (pe) box.setAttribute('data-pid', pe.id); else box.removeAttribute('data-pid');
+    box.innerHTML = '<span class="nm">' + ckChip(pe) + '<span>' + esc(CK.names[seat]) + (g.dealer === seat && g.phase !== 'wait' ? ' <em>D</em>' : '') + '</span></span><span class="fan">' + backs(n) + '</span>';
   }
   /* make the cards on the table as large as they can be while all of them stay visible */
   function ckFit() {
@@ -200,16 +253,16 @@
     t.style.setProperty('--cw', cw + 'px');
     var box = t.querySelector('.cards'); if (box) box.style.maxWidth = (even * (cw + 8) - 8) + 'px';   // 4 cards: 4 in a row or 2 and 2, never 3 and 1
   }
-  window.addEventListener('resize', function () { if (CK && !$('#ck').hidden) ckFit(); });
+  window.addEventListener('resize', function () { if (CK && (CK.online || !$('#ck').hidden)) ckFit(); });
   function ckRender() {
     var g = CK.g, n = g.n, teamOf = function (s) { return CKE.teamOf(g, s); };
-    $('#ck-score').innerHTML = '<span class="us"><b>' + g.scores[0] + '</b>' + (n === 2 ? 'You' : 'Us') + '</span><span class="to">to ' + g.target + '</span><span class="them"><b>' + g.scores[1] + '</b>' + (n === 2 ? 'Computer' : 'Them') + '</span><span class="deck' + (g.deck.length ? '' : ' lastround') + '">' + (g.deck.length ? 'Deck ' + g.deck.length : 'Last round') + '</span>';
+    var deckTxt = g.phase === 'wait' ? '' : g.deck.length ? 'Deck ' + g.deck.length : 'Last round';
+    $('#ck-score').innerHTML = '<span class="us"><b>' + g.scores[0] + '</b>' + esc(ckTeamShort(0)) + '</span><span class="to">to ' + g.target + '</span><span class="them"><b>' + g.scores[1] + '</b>' + esc(ckTeamShort(1)) + '</span>' + (deckTxt ? '<span class="deck' + (g.deck.length ? '' : ' lastround') + '">' + deckTxt + '</span>' : '');
     (function () {
       var T = n === 4 ? 2 : n, h = '';
       for (var q = 0; q < T; q++) {
-        var pl = g.piles[q] || [];
-        var dm = pl.filter(function (c) { return CKE.suit(c) === 0; }).length, sv = pl.filter(function (c) { return CKE.rank(c) === 7; }).length;
-        h += '<span class="pl ' + (q === 0 ? 'us' : 'them') + '"><i>' + esc(n === 2 ? (q === 0 ? 'You' : 'Computer') : (q === 0 ? 'Us' : 'Them')) + '</i><em><b>' + pl.length + '</b> <u>cards</u></em><em><b>' + dm + '</b> ♦</em><em><b>' + sv + '</b> <u>sevens</u></em>' + (pl.indexOf(CKE.HAYA) >= 0 ? '<em>7♦</em>' : '') + ((g.chk[q] || 0) ? '<em><b>' + g.chk[q] + '</b> <u>Chkobba</u></em>' : '') + '</span>';
+        var st = ckStats(g, q);
+        h += '<span class="pl ' + (q === 0 ? 'us' : 'them') + '"><i>' + esc(ckTeamShort(q)) + '</i><em><b>' + st.cards + '</b> <u>cards</u></em><em><b>' + st.coins + '</b> ♦</em><em><b>' + st.sevens + '</b> <u>sevens</u></em>' + (st.haya ? '<em>7♦</em>' : '') + (st.chk ? '<em><b>' + st.chk + '</b> <u>Chkobba</u></em>' : '') + '</span>';
       }
       $('#ck-piles').innerHTML = h;
     })();
@@ -224,7 +277,15 @@
       return cardHtml(id, (optIds.indexOf(id) >= 0 ? 'opt ' : '') + (picks.indexOf(id) >= 0 ? 'picked' : ''));
     }).join('') + '</div>' : '<span class="empty">The table is empty</span>';
     ckFit();
-    $('#ck-hand').innerHTML = g.hands[0].map(function (id) { return cardHtml(id, (CK.sel === id ? 'sel' : '') + (CK.busy || g.turn !== 0 ? ' wait' : '')); }).join('');
+    $('#ck-hand').innerHTML = CK.watch ? backs(g.hands[0].length) : g.hands[0].map(function (id) { return cardHtml(id, (CK.sel === id ? 'sel' : '') + (CK.busy || g.turn !== 0 ? ' wait' : '')); }).join('');
+    var meBox = $('#ck-me');
+    if (CK.online) {
+      var pe0 = CK.people ? CK.people[0] : null;
+      meBox.hidden = false;
+      meBox.className = 'seat me' + (g.turn === 0 && g.phase === 'play' ? ' turn' : '') + (pe0 && voice.speaking[pe0.id] ? ' speaking' : '');
+      if (pe0) meBox.setAttribute('data-pid', pe0.id);
+      meBox.innerHTML = '<span class="nm">' + ckChip(pe0) + '<span>' + esc(CK.names[0]) + (g.dealer === 0 && g.phase !== 'wait' ? ' <em>D</em>' : '') + '</span></span>';
+    } else meBox.hidden = true;
     // last play, shown as small cards
     var lp = CK.last, lh = '';
     if (lp) lh = cardHtml(lp.card, 'mini', 'div') + (lp.took.length ? '<span class="arrow">→</span>' + lp.took.map(function (t) { return cardHtml(t, 'mini', 'div'); }).join('') : '<span class="arrow">↓</span>');
@@ -233,7 +294,9 @@
     $('#ck-chk').hidden = !(lp && lp.chk && CK.show);
     $('#ck-haya').hidden = !(lp && lp.haya && CK.show);
     var act = $('#ck-act'), label;
-    if (g.phase !== 'play' || CK.busy || g.turn !== 0) { label = g.phase === 'play' && g.turn !== 0 ? 'Waiting for ' + CK.names[g.turn] + '…' : '…'; act.disabled = true; }
+    if (CK.online && CK.watch) { label = 'You are watching'; act.disabled = true; }
+    else if (CK.online && (g.phase === 'wait' || !G.peer)) { label = 'Waiting for players…'; act.disabled = true; }
+    else if (g.phase !== 'play' || CK.busy || g.turn !== 0) { label = g.phase === 'play' && g.turn !== 0 ? 'Waiting for ' + CK.names[g.turn] + '…' : '…'; act.disabled = true; }
     else if (CK.sel == null) { label = 'Choose a card'; act.disabled = true; }
     else if (!CK.opts.length) { label = 'Put it down'; act.disabled = false; }
     else if (ckReady()) { label = 'Take'; act.disabled = false; }
@@ -246,14 +309,30 @@
   $('#ck-hand').addEventListener('click', function (e) { var c = e.target.closest('.pc'); if (c && CK) ckSelect(+c.getAttribute('data-id')); });
   $('#ck-table').addEventListener('click', function (e) { var c = e.target.closest('.pc'); if (c && CK) ckPickTable(+c.getAttribute('data-id')); });
   $('#ck-act').addEventListener('click', function () { if (CK) ckConfirm(); });
-  $('#ck-keep').addEventListener('click', function () { if (CK && CK.g.phase === 'cut') ckApplyCut(true); });
-  $('#ck-throw').addEventListener('click', function () { if (CK && CK.g.phase === 'cut') ckApplyCut(false); });
+  function ckCutChoice(keep) {
+    if (!CK || CK.g.phase !== 'cut') return;
+    if (CK.online) { closeOverlay('#ck-cut'); netSend({ t: 'ckcut', keep: keep }); return; }
+    ckApplyCut(keep);
+  }
+  $('#ck-keep').addEventListener('click', function () { ckCutChoice(true); });
+  $('#ck-throw').addEventListener('click', function () { ckCutChoice(false); });
   $('#ck-next').addEventListener('click', function () {
+    if (CK.online) {
+      if (CK.watch) return;
+      if (CK.ready.indexOf(CK.mySeat) < 0) CK.ready.push(CK.mySeat);
+      this.disabled = true; this.textContent = 'Waiting for the others…'; ckoReadyNote();
+      netSend({ t: 'ckready' });
+      return;
+    }
     closeOverlay('#ck-deal');
     if (CK.g.over) { ckStart(CK.n, CK.g.target); return; }
     CKE.nextDeal(CK.g, Math.random); CK.last = null; ckCutPhase();
   });
-  $('#ck-deal-menu').addEventListener('click', function () { CK.token++; closeOverlay('#ck-deal'); show('menu'); });
+  $('#ck-deal-menu').addEventListener('click', function () {
+    closeOverlay('#ck-deal');
+    if (CK.online) { leaveTable(); return; }
+    CK.token++; show('menu');
+  });
   $('#ck-menu').addEventListener('click', function () {
     var b = this;
     if (!CK.quit) { b.textContent = 'Tap again to quit'; CK.quit = setTimeout(function () { if (CK) { CK.quit = null; } b.textContent = '← Menu'; }, 3000); return; }
@@ -262,7 +341,7 @@
   $('#ck-help').addEventListener('click', function () { openOverlay('#ck-rules'); });
   $('#ck-rules-btn').addEventListener('click', function () { openOverlay('#ck-rules'); });
   $('#ck-rules-close').addEventListener('click', function () { closeOverlay('#ck-rules'); });
-  $('#ck-online').addEventListener('click', function () { $('#ck-online-note').hidden = false; });
+  $('#ck-online').addEventListener('click', function () { openOnline('', 'ck'); });
   $('#ck-start').addEventListener('click', function () {
     var v = function (nm) { var c = document.querySelector('input[name="' + nm + '"]:checked'); return c ? +c.value : null; };
     var n = v('ckn') || 2, t = v('ckt') || 11, lv = (document.querySelector('input[name="ckl"]:checked') || {}).value || 'normal';
@@ -272,6 +351,176 @@
   (function ckPrefs() {
     try { var s = JSON.parse(localStorage.getItem('dama-ck') || 'null'); if (s) { var a = document.querySelector('input[name="ckn"][value="' + s.n + '"]'), b = document.querySelector('input[name="ckt"][value="' + s.t + '"]'); if (a) a.checked = true; if (b) b.checked = true; } } catch (e) {}
   })();
+
+
+  /* =====================================================================
+     ONLINE CHKOBBA: the server deals and shuffles and sends each person only their own cards.
+     The table uses the same screen as Dama (top buttons, bottom bar, voice, chat). Here the server's view is
+     turned around so that I am always seat 0 at the bottom, then the normal drawing code does the rest.
+     ===================================================================== */
+  var CKO_EMPTY_STATS = { cards: 0, coins: 0, sevens: 0, sixes: 0, haya: false };
+  function ckoMount() {
+    var play = $('#ck-play'), slot = $('#ck-slot');
+    if (play.parentNode !== slot) slot.appendChild(play);
+    var sc = $('#ck-score'), host = $('#ck-scoreslot');
+    if (sc.parentNode !== host) host.appendChild(sc);
+    $('#game').setAttribute('data-kind', 'ck');
+    $('#sh-seats-ck').hidden = false;
+  }
+  function ckoUnmount() {
+    var play = $('#ck-play');
+    if (play.parentNode.id === 'ck-slot') {
+      document.querySelector('.ck-wrap').appendChild(play);
+      var bar = document.querySelector('.ck-bar'); bar.insertBefore($('#ck-score'), $('#ck-help'));
+      $('#game').removeAttribute('data-kind'); $('#sh-seats-ck').hidden = true;
+      closeOverlay('#ck-cut'); closeOverlay('#ck-deal');
+    }
+    if (CK && CK.online) { CK.token++; CK = null; }
+  }
+  function ckoBuild(v) {
+    var n = CK.n, ms = CK.mySeat, i;
+    function rot(s) { return (s - ms + n) % n; }
+    var mt = n === 4 ? ms % 2 : ms, swap = mt === 1;
+    if (!v) return { n: n, target: CK.target, dealer: 0, cutter: 0, phase: 'wait', turn: 0, scores: [0, 0], over: false, winner: null, deck: [], table: [], hands: ckoBlank(n), stats: [CKO_EMPTY_STATS, CKO_EMPTY_STATS], chk: [0, 0], deals: 0, cutCard: null };
+    var hands = [];
+    for (i = 0; i < n; i++) {
+      var h;
+      if (i === ms && !CK.watch) h = (v.hand || []).slice(); else { h = []; for (var k = 0; k < v.handN[i]; k++) h.push(-1); }
+      hands[rot(i)] = h;
+    }
+    var deck = []; for (i = 0; i < v.deck; i++) deck.push(-1);
+    function two(a) { return swap ? [a[1], a[0]] : [a[0], a[1]]; }
+    return { n: n, target: v.target, dealer: rot(v.dealer), cutter: rot(v.cutter), phase: v.phase, turn: rot(v.turn), scores: two(v.scores), over: !!v.over,
+      winner: v.winner == null ? null : (swap ? 1 - v.winner : v.winner), deck: deck, table: v.table.slice(), hands: hands, stats: two(v.stats), chk: two(v.chk), deals: v.deals, cutCard: v.cutCard };
+  }
+  function ckoBlank(n) { var h = []; for (var i = 0; i < n; i++) h.push([]); return h; }
+  function ckoTeam(t) { return (CK.n === 4 ? CK.mySeat % 2 : CK.mySeat) === 1 ? 1 - t : t; }
+  function ckoSyncPeople() {
+    if (!CK || !G) return;
+    var n = CK.n, seated = 0;
+    CK.people = [];
+    (G.crowd || []).forEach(function (e) { if (e.role === 'player' && e.seat != null) { CK.people[(e.seat - CK.mySeat + n) % n] = e; seated++; } });
+    for (var s = 0; s < n; s++) { var e = CK.people[s]; CK.names[s] = (s === 0 && !CK.watch) ? 'You' : e ? e.name : 'Waiting…'; }
+    G.peer = seated === n;
+  }
+  function ckoReadyNote() {
+    if (!CK || !CK.online) return;
+    var need = (G.crowd || []).filter(function (e) { return e.role === 'player' && e.online; }).length || CK.n;
+    $('#ck-ready').textContent = CK.ready.length + ' of ' + need + ' ready';
+  }
+  function ckoShare() {
+    var n = CK.n, c = G.crowd || [], seats = [], filled = 0, h = '';
+    c.forEach(function (e) { if (e.role === 'player') { seats[e.seat] = e; filled++; } });
+    for (var s = 0; s < n; s++) {
+      var e = seats[s];
+      h += '<div class="wr-seat' + (e ? ' on' : '') + (e && e.id === G.myId ? ' me' : '') + '"><b>' + (e ? esc((e.name || '?').trim().charAt(0).toUpperCase()) : '+') + '</b><small>' + (e ? esc(e.name) : 'Empty') + '</small>' + (n === 4 ? '<span class="tm">Team ' + (s % 2 + 1) + '</span>' : '') + '</div>';
+    }
+    var box = $('#sh-seats-ck');
+    box.className = 'wr-seats' + (n === 4 ? ' four' : '');
+    if (box.getAttribute('data-sig') !== h) { box.innerHTML = h; box.setAttribute('data-sig', h); }
+    var full = filled === n, base = location.origin + location.pathname + '#' + G.code;
+    $('#sh-code').textContent = G.code; $('#sh-link').value = base; $('#sh-wlink').value = base + '/watch';
+    $('#sh-opp-block').hidden = full;
+    $('#sh-count').textContent = full ? 'Everyone is seated · ready' : filled + ' seated · ' + (n - filled) + ' to go';
+    $('#sh-info').textContent = 'Chkobba · ' + (n === 4 ? '4 players in teams' : '2 players') + ' · to ' + G.target;
+    $('#sh-title').textContent = full ? 'Invite watchers' : (n === 2 ? 'Invite your friend' : 'Invite your friends');
+    $('#sh-share').hidden = !navigator.share;
+  }
+  function ckoRender() {
+    if (!G || G.kind !== 'ck' || !CK || !CK.online) return;
+    ckoSyncPeople();
+    var g = CK.g;
+    if (!G.peer) { CK.waiting = true; CK.msg = 'Waiting for ' + (CK.n - (G.crowd || []).filter(function (e) { return e.role === 'player'; }).length || 1) + ' more to sit down…'; }
+    else if (CK.waiting) { CK.waiting = false; CK.msg = g.phase === 'play' && g.turn === 0 && !CK.watch ? 'Your turn.' : (g.phase === 'wait' ? 'Starting…' : ''); }
+    ckRender();
+    $('#rl-eye').hidden = false; $('#rl-snd').classList.toggle('off', !sfx.isOn());
+    $('#share-box').hidden = !(G.host);
+    $('#voice-box').hidden = false; $('#chat-box').hidden = false;
+    ckoShare();
+    renderVoice();
+    dockSync();
+  }
+
+  /* an arriving table message: wait while a move is still being shown */
+  function ckDrain() {
+    if (!CK || !CK.online) return;
+    CK.anim = false;
+    var m = CK.q.shift();
+    if (m) ckoApply(m);
+  }
+  function ckoMsg(m) {
+    if (!G || G.kind !== 'ck' || !CK || !CK.online) return;
+    if (CK.anim) { CK.q.push(m); return; }
+    ckoApply(m);
+  }
+  function ckoApply(m) {
+    if (!G || !CK || !CK.online) return;
+    if (m.t === 'ckready') { CK.ready = m.ready || []; if (!$('#ck-deal').hidden) { var nx = $('#ck-next'); nx.disabled = CK.ready.indexOf(CK.mySeat) >= 0; if (!nx.disabled) nx.textContent = CK.g.over ? 'Play again' : 'Next deal'; ckoReadyNote(); } return; }
+    if (m.t === 'ckstate') {                                  // a new game or a new deal
+      closeOverlay('#ck-deal'); closeOverlay('#ck-cut');
+      CK.g = ckoBuild(m.view); CK.last = null; CK.show = null; CK.ready = []; CK.waiting = false; CK.token++;
+      ckoRender(); ckoCutPhase();
+      return;
+    }
+    if (m.t !== 'ckmoved') return;
+    var ev = m.ev, before = CK.g.table.slice();
+    CK.g = ckoBuild(m.view);
+    if (ev.k === 'cut') {
+      var seat = (ev.seat - CK.mySeat + CK.n) % CK.n;
+      closeOverlay('#ck-cut');
+      CK.msg = CK.names[seat] + (ev.keep ? ' kept the card.' : ' threw the card on the table.') + ' ' + ev.tableN + ' cards on the table.'; CK.last = null;
+      CK.anim = true; sfx.play('move'); ckoRender(); ckLater(ckNext, 1800);
+      return;
+    }
+    if (ev.k === 'play') {
+      var rs = (ev.seat - CK.mySeat + CK.n) % CK.n;
+      var score = ev.score ? { items: ev.score.items.map(function (it) { var o = {}; for (var k in it) o[k] = it[k]; o.team = ckoTeam(it.team); return o; }) } : null;
+      CK.sel = null; CK.pick = []; CK.opts = [];
+      ckShowMove(rs, ev.card, ev.took || [], { chkobba: !!ev.chk, dealtMore: !!ev.more, ended: !!ev.ended, score: score }, before);
+      ckoRender();
+    }
+  }
+  function ckoCutPhase() {
+    CK.busy = true; CK.sel = null; CK.pick = []; CK.opts = [];
+    if (CK.g.phase === 'cut') ckCutPhase();
+    else if (CK.g.phase === 'play') ckNext();
+    else ckRender();
+  }
+
+  function ckoJoined(m) {
+    net.code = m.code; net.token = m.token; net.ice = m.ice; net.needResume = false; net.leaving = false;
+    saveSession();
+    var watcher = m.role === 'watcher';
+    joinAuto = null; closeOverlay('#joining');
+    try { var wantHash = '#' + m.code + (watcher ? '/watch' : ''); if (location.hash !== wantHash) history.replaceState(null, '', wantHash); } catch (e) {}
+    clearTimeout(timer); token++; thinking = false; busy = false; moveQ = [];
+    G = {
+      online: true, kind: 'ck', role: watcher ? 'watcher' : 'player', myId: m.id, host: !!m.host, hostId: null, crowd: m.crowd || [], clock: null,
+      cfg: { mode: 'online', level: 'medium', first: 'me' }, code: m.code, mySide: 0, n: m.n, target: m.target, names: { 1: null, '-1': null }, peer: false,
+      board: new Int8Array(64), turn: 1, over: null, log: [], last: null, moves: [], hist: [], pending: false, drawOffered: false, drawSent: false, rematchPeer: false
+    };
+    var oldTok = CK ? CK.token : 0;
+    CK = { online: true, n: m.n, target: m.target, token: oldTok + 1, watch: watcher, mySeat: watcher ? 0 : m.seat, names: [], people: [], g: null, sel: null, opts: [], pick: [],
+      busy: true, msg: '', last: null, show: null, quit: null, q: [], anim: false, ready: (m.view && m.view.ready) || [], level: 'normal', waiting: false };
+    CK.g = ckoBuild(m.view);
+    closeOverlay('#online'); closeOverlay('#victory'); closeOverlay('#ck-cut'); closeOverlay('#ck-deal'); setBusyOnline(false);
+    ckoMount();
+    show('game');
+    ckoSyncPeople();
+    ckoRender();
+    if (m.view) {
+      if (m.view.phase === 'cut') ckCutPhase();
+      else if (m.view.phase === 'play') ckNext();
+      else if (m.view.phase === 'scored') { CK.msg = 'Deal finished.'; ckShowDeal(null); }
+    }
+    voiceSync();
+    chatReset(m.chat || []);
+  }
+  function ckoCrowd() {
+    ckoRender();
+    if (CK && CK.online && CK.g && CK.g.phase === 'scored' && !$('#ck-deal').hidden) ckoReadyNote();
+    voiceSync();
+  }
 
   /* the home screen: pick the game, each game has its own menu */
   function setGame(which) {

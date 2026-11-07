@@ -12,6 +12,7 @@ const crypto = require('crypto');
 const { EventEmitter } = require('events');
 const { WebSocketServer } = require('ws');
 const E = require('./src/engine.js');
+const CKE = require('./src/chkobba.js');
 
 const INDEX = path.join(__dirname, 'public', 'index.html');
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O/1/I
@@ -177,15 +178,19 @@ function start(port, host, opts) {
 
   /* ---------- helpers ---------- */
   const send = (ws, obj) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); };
-  const sendSide = (room, side, obj) => { const p = room.p[side]; if (p) send(p.ws, obj); };
+  /* a Dama table has two seats (sides 1 and -1); a Chkobba table has 2 or 4 (seats 0..n-1) */
+  const players = room => room.kind === 'ck' ? room.seats.filter(Boolean) : [room.p[1], room.p[-1]].filter(Boolean);
+  const sendSide = (room, side, obj) => { const p = room.kind === 'ck' ? room.seats[side] : room.p[side]; if (p) send(p.ws, obj); };
   const sendWatchers = (room, obj) => { for (const w of room.w.values()) send(w.ws, obj); };
-  const broadcast = (room, obj) => { sendSide(room, 1, obj); sendSide(room, -1, obj); sendWatchers(room, obj); };
+  const broadcast = (room, obj) => { players(room).forEach(p => send(p.ws, obj)); sendWatchers(room, obj); };
   const live = x => !!(x && x.ws && x.ws.readyState === 1);
 
   /* everyone at the table, for the call bar: players first, then watchers */
   function crowd(room) {
     const list = [];
-    for (const side of [1, -1]) {
+    if (room.kind === 'ck') {
+      room.seats.forEach((p, seat) => { if (p) list.push({ id: p.id, name: p.name, role: 'player', side: seat, seat, online: live(p), gen: p.gen || 0, muted: false, asking: false }); });
+    } else for (const side of [1, -1]) {
       const p = room.p[side];
       if (p) list.push({ id: p.id, name: p.name, role: 'player', side, online: live(p), gen: p.gen || 0, muted: false, asking: false });
     }
@@ -225,7 +230,7 @@ function start(port, host, opts) {
     endGame(room, { winner: -side, reason: 'time', by: side });
   }
   function wsOf(room, id) {
-    for (const side of [1, -1]) if (room.p[side] && room.p[side].id === id) return room.p[side].ws;
+    for (const p of players(room)) if (p.id === id) return p.ws;
     const w = room.w.get(id);
     return w ? w.ws : null;
   }
@@ -302,12 +307,12 @@ function start(port, host, opts) {
     if (ws.room) return fail(ws, 'You are already at a table.');
     const room = rooms.get(String(m.code || '').toUpperCase().trim());
     if (!room) return fail(ws, 'No table with that code. Check it and try again.', 'not_found');
-    if (room.w.size >= MAX_WATCHERS) return fail(ws, 'That table already has the most watchers it can hold.', 'full');
+    if (room.w.size >= (room.kind === 'ck' ? 6 - room.n : MAX_WATCHERS)) return fail(ws, 'That table already has the most watchers it can hold.', 'full');
     const w = { id: newId(), name: cleanName(m.name, 'Guest'), token: crypto.randomBytes(16).toString('hex'), ws, muted: true, asking: false, gone: 0, gen: 1 };
     room.w.set(w.id, w);
     ws.room = room; ws.side = 0; ws.role = 'watcher'; ws.pid = w.id;
     room.lastActive = Date.now();
-    send(ws, snapshotWatch(room, w, 'join'));
+    send(ws, room.kind === 'ck' ? ckSnapshot(room, -1, w, 'join') : snapshotWatch(room, w, 'join'));
     sendCrowd(room);
   }
 
@@ -315,6 +320,7 @@ function start(port, host, opts) {
     if (ws.room) return fail(ws, 'You are already at a table.');
     const room = rooms.get(String(m.code || '').toUpperCase().trim());
     if (!room) return fail(ws, 'No table with that code. Check it and try again.', 'not_found');
+    if (room.kind === 'ck') return ckJoin(ws, m, room);
     const side = !room.p[-1] ? -1 : !room.p[1] ? 1 : 0;
     if (!side) return fail(ws, 'Both seats at that table are taken.', 'full');
     room.p[side] = { id: newId(), name: cleanName(m.name, side === 1 ? 'Player 1' : 'Player 2'), token: crypto.randomBytes(16).toString('hex'), ws: null };
@@ -329,14 +335,23 @@ function start(port, host, opts) {
   function onResume(ws, m) {
     const room = rooms.get(String(m.code || '').toUpperCase().trim());
     if (!room) return fail(ws, 'That table no longer exists.', 'not_found');
-    const side = [1, -1].find(s => room.p[s] && room.p[s].token === m.token);
+    if (room.kind === 'ck') {
+      const seat = room.seats.findIndex(p => p && p.token === m.token);
+      if (seat >= 0) {
+        if (ws.room && ws.room !== room) ws.room = null;
+        ckAttach(room, seat, ws);
+        send(ws, ckSnapshot(room, seat, room.seats[seat], 'resume'));
+        return sendCrowd(room);
+      }
+    }
+    const side = room.kind === 'ck' ? 0 : [1, -1].find(s => room.p[s] && room.p[s].token === m.token);
     if (!side) {
       const w = [...room.w.values()].find(x => x.token === m.token);
       if (!w) return fail(ws, 'That table no longer exists.', 'not_found');
       if (w.ws && w.ws !== ws) { const old = w.ws; w.ws = null; try { old.close(4000, 'replaced'); } catch (e) {} }
       w.ws = ws; w.gone = 0; w.gen = (w.gen || 0) + 1;
       ws.room = room; ws.side = 0; ws.role = 'watcher'; ws.pid = w.id;
-      send(ws, snapshotWatch(room, w, 'resume'));
+      send(ws, room.kind === 'ck' ? ckSnapshot(room, -1, w, 'resume') : snapshotWatch(room, w, 'resume'));
       return sendCrowd(room);
     }
     if (ws.room && ws.room !== room) ws.room = null;
@@ -350,6 +365,7 @@ function start(port, host, opts) {
   function onMove(ws, m) {
     const room = ws.room, side = ws.side;
     if (!room) return fail(ws, 'Not at a table.');
+    if (room.kind === 'ck') return fail(ws, 'Not a Dama table.', 'illegal');
     if (ws.role !== 'player') return fail(ws, 'Watchers cannot move.', 'illegal');
     if (room.state.over) return fail(ws, 'The game is over.', 'illegal');
     if (!room.p[-side]) return fail(ws, 'Waiting for your friend to join.', 'illegal');
@@ -382,7 +398,7 @@ function start(port, host, opts) {
 
   function onDraw(ws, m) {
     const room = ws.room, side = ws.side;
-    if (!room || ws.role !== 'player' || room.state.over || !room.p[-side]) return;
+    if (!room || room.kind === 'ck' || ws.role !== 'player' || room.state.over || !room.p[-side]) return;
     if (m.action === 'offer') {
       room.drawOffer = side;
       sendSide(room, -side, { t: 'draw', action: 'offered' });
@@ -396,7 +412,7 @@ function start(port, host, opts) {
 
   function onRematch(ws) {
     const room = ws.room, side = ws.side;
-    if (!room || ws.role !== 'player' || !room.state.over || !room.p[-side]) return;
+    if (!room || room.kind === 'ck' || ws.role !== 'player' || !room.state.over || !room.p[-side]) return;
     room.rematch[side] = true;
     if (!room.rematch[-side]) { sendSide(room, -side, { t: 'rematch', action: 'requested' }); return; }
     // both agreed: swap colours so the other player moves first
@@ -417,6 +433,7 @@ function start(port, host, opts) {
   function leaveRoom(ws, explicit) {
     const room = ws.room, side = ws.side;
     if (!room) return;
+    if (room.kind === 'ck') return ckLeave(ws, explicit);
     if (ws.role === 'watcher') {
       const w = room.w.get(ws.pid);
       if (w && w.ws === ws) {
@@ -463,7 +480,7 @@ function start(port, host, opts) {
     sendCrowd(room);
   }
 
-  const sender = ws => ws.room && (ws.role === 'watcher' ? ws.room.w.get(ws.pid) : ws.role === 'player' ? ws.room.p[ws.side] : null);
+  const sender = ws => ws.room && (ws.role === 'watcher' ? ws.room.w.get(ws.pid) : ws.role === 'player' ? (ws.room.kind === 'ck' ? ws.room.seats[ws.side] : ws.room.p[ws.side]) : null);
 
   function onChat(ws, m) {
     const who = sender(ws);
@@ -494,8 +511,152 @@ function start(port, host, opts) {
     const room = ws.room;
     if (!room) return;
     if (ws.role === 'watcher') { const w = room.w.get(ws.pid); if (w) w.name = cleanName(m.name, w.name); }
+    else if (room.kind === 'ck') { const p = room.seats[ws.side]; if (p) p.name = cleanName(m.name, p.name); }
     else { const p = room.p[ws.side]; if (p) { p.name = cleanName(m.name, p.name); sendSide(room, -ws.side, { t: 'peer', status: 'online', name: p.name }); } }
     sendCrowd(room);
+  }
+
+
+  /* ---------- Chkobba tables (2 players, or 4 in two teams) ----------
+     The server shuffles, deals and keeps every hand. Each person is sent only their own cards:
+     the others show up as a count. Seats 0..n-1 are in order of play; seats 0 and 2 are partners at a 4-player table. */
+  function ckStats(g) {
+    return [0, 1].map(q => {
+      const pl = g.piles[q] || [];
+      return { cards: pl.length, coins: pl.filter(c => CKE.suit(c) === 0).length, sevens: pl.filter(c => CKE.rank(c) === 7).length,
+        sixes: pl.filter(c => CKE.rank(c) === 6).length, haya: pl.indexOf(CKE.HAYA) >= 0 };
+    });
+  }
+  function ckView(room, seat) {
+    const g = room.g;
+    if (!g) return null;
+    return {
+      n: g.n, target: g.target, dealer: g.dealer, cutter: g.cutter, phase: g.phase, turn: g.turn,
+      scores: g.scores.slice(0, 2), over: g.over, winner: g.winner, deck: g.deck.length, table: g.table.slice(),
+      handN: g.hands.map(h => h.length), hand: seat >= 0 ? g.hands[seat].slice() : [],
+      cutCard: (seat >= 0 && seat === g.cutter && g.phase === 'cut') ? g.cutCard : null,
+      stats: ckStats(g), chk: g.chk.slice(0, 2), deals: g.deals, ready: [...room.ready]
+    };
+  }
+  function ckSnapshot(room, seat, who, reason) {
+    return {
+      t: 'ckjoined', reason, code: room.code, seat, token: who.token, id: who.id,
+      role: seat >= 0 ? 'player' : 'watcher', host: seat >= 0 && room.hostId === who.id, crowd: crowd(room), chat: room.chat,
+      n: room.n, target: room.target, ice: iceConfig(), view: ckView(room, seat), log: room.log, ev: null
+    };
+  }
+  function ckSendViews(room, make) {
+    room.seats.forEach((p, seat) => { if (p) send(p.ws, make(seat)); });
+    for (const w of room.w.values()) send(w.ws, make(-1));
+  }
+  function ckAttach(room, seat, ws) {
+    const p = room.seats[seat];
+    if (p.ws && p.ws !== ws) { try { p.ws.close(4000, 'replaced'); } catch (e) {} }
+    p.ws = ws; p.gen = (p.gen || 0) + 1; ws.room = room; ws.side = seat; ws.role = 'player'; ws.pid = p.id;
+    room.lastActive = Date.now();
+  }
+  function ckCreate(ws, m) {
+    if (ws.room) return fail(ws, 'You are already at a table.');
+    const n = Number(m.n) === 4 ? 4 : 2, target = Number(m.target) === 21 ? 21 : 11;
+    const code = newCode();
+    const room = {
+      kind: 'ck', code, createdAt: Date.now(), lastActive: Date.now(), n, target, seats: new Array(n).fill(null), p: {},
+      g: null, ready: new Set(), log: [], w: new Map(), hostId: null, chat: [], clock: null
+    };
+    room.seats[0] = { id: newId(), name: cleanName(m.name, 'Player 1'), token: crypto.randomBytes(16).toString('hex'), ws: null };
+    room.hostId = room.seats[0].id;
+    rooms.set(code, room);
+    ckAttach(room, 0, ws);
+    send(ws, ckSnapshot(room, 0, room.seats[0], 'create'));
+    sendCrowd(room);
+  }
+  function ckJoin(ws, m, room) {
+    const seat = room.seats.findIndex(p => !p);
+    if (seat < 0) return fail(ws, 'All the seats at that table are taken.', 'full');
+    room.seats[seat] = { id: newId(), name: cleanName(m.name, 'Player ' + (seat + 1)), token: crypto.randomBytes(16).toString('hex'), ws: null };
+    if (!room.hostId || !room.seats.some(p => p && p.id === room.hostId)) room.hostId = room.seats[seat].id;
+    ckAttach(room, seat, ws);
+    send(ws, ckSnapshot(room, seat, room.seats[seat], 'join'));
+    sendCrowd(room);
+    ckMaybeStart(room);
+  }
+  function ckNewGame(room) {
+    room.g = CKE.newGame(room.n, room.target, Math.random, crypto.randomInt(room.n));
+    room.ready = new Set(); room.log = [];
+  }
+  function ckMaybeStart(room) {
+    if (room.g || !room.seats.every(Boolean)) return;
+    ckNewGame(room);
+    ckSendViews(room, seat => ({ t: 'ckstate', reason: 'start', view: ckView(room, seat) }));
+  }
+  function ckSeated(room) { return room.seats.every(Boolean); }
+  function ckCut(ws, m) {
+    const room = ws.room;
+    if (!room || room.kind !== 'ck' || ws.role !== 'player' || !room.g) return;
+    const g = room.g;
+    if (g.phase !== 'cut' || g.cutter !== ws.side || !ckSeated(room)) return fail(ws, 'It is not time to cut.', 'illegal');
+    const keep = !!m.keep;
+    CKE.cutDecision(g, keep);
+    room.lastActive = Date.now();
+    const ev = { k: 'cut', seat: ws.side, keep, tableN: g.table.length };
+    ckSendViews(room, seat => ({ t: 'ckmoved', ev, view: ckView(room, seat) }));
+  }
+  function ckPlay(ws, m) {
+    const room = ws.room;
+    if (!room || room.kind !== 'ck' || ws.role !== 'player' || !room.g) return;
+    const g = room.g, seat = ws.side;
+    if (!ckSeated(room)) return fail(ws, 'Waiting for everyone to sit down.', 'illegal');
+    if (g.phase !== 'play' || g.turn !== seat) return fail(ws, 'It is not your turn.', 'illegal');
+    const card = Number(m.card), take = Array.isArray(m.take) ? m.take.map(Number) : [];
+    if (!Number.isInteger(card) || take.length > 10 || take.some(x => !Number.isInteger(x))) return fail(ws, 'Illegal move.', 'illegal');
+    let r;
+    try { r = CKE.play(g, seat, card, take); } catch (e) { return fail(ws, 'Illegal move.', 'illegal'); }
+    room.lastActive = Date.now();
+    const ev = { k: 'play', seat, card, took: r.took, chk: r.chkobba, more: r.dealtMore, ended: r.ended, score: r.score || null };
+    room.log.push({ side: seat, text: card + (r.took.length ? '>' + r.took.join(',') : '') });
+    if (room.log.length > 200) room.log.shift();
+    if (r.ended) room.ready = new Set();
+    ckSendViews(room, s => ({ t: 'ckmoved', ev, view: ckView(room, s) }));
+  }
+  function ckReady(ws) {
+    const room = ws.room;
+    if (!room || room.kind !== 'ck' || ws.role !== 'player' || !room.g || room.g.phase !== 'scored') return;
+    room.ready.add(ws.side);
+    const need = room.seats.map((p, i) => (p && live(p) ? i : -1)).filter(i => i >= 0);
+    if (need.every(i => room.ready.has(i))) {
+      if (room.g.over) ckNewGame(room); else CKE.nextDeal(room.g, Math.random);
+      room.ready = new Set(); room.lastActive = Date.now();
+      ckSendViews(room, seat => ({ t: 'ckstate', reason: 'deal', view: ckView(room, seat) }));
+    } else ckSendViews(room, seat => ({ t: 'ckready', ready: [...room.ready], view: ckView(room, seat) }));
+  }
+  function ckLeave(ws, explicit) {
+    const room = ws.room, seat = ws.side;
+    if (ws.role === 'watcher') {
+      const w = room.w.get(ws.pid);
+      if (w && w.ws === ws) {
+        if (explicit) room.w.delete(w.id); else { w.ws = null; w.gone = Date.now(); }
+        sendCrowd(room);
+      }
+      ws.room = null; ws.side = 0; ws.role = null;
+      return;
+    }
+    const p = room.seats[seat];
+    if (p && p.ws === ws) {
+      if (explicit) {
+        room.seats[seat] = null; room.ready.delete(seat);
+        if (room.hostId === p.id) { const nx = room.seats.find(Boolean); if (nx) room.hostId = nx.id; }
+      } else p.ws = null;
+    }
+    room.lastActive = Date.now();
+    if (!room.seats.some(Boolean)) {
+      sendWatchers(room, { t: 'closed' });
+      for (const w of room.w.values()) { if (w.ws) { w.ws.room = null; w.ws.role = null; } }
+      rooms.delete(room.code);
+    } else {
+      sendCrowd(room);
+      if (room.g && room.g.phase === 'scored') ckSendViews(room, s => ({ t: 'ckready', ready: [...room.ready], view: ckView(room, s) }));
+    }
+    ws.room = null; ws.side = 0; ws.role = null;
   }
 
   /* ---------- connection ---------- */
@@ -521,12 +682,17 @@ function start(port, host, opts) {
         case 'move': return onMove(ws, m);
         case 'sync':
           if (ws.room) {
-            if (ws.role === 'watcher') { const w = ws.room.w.get(ws.pid); if (w) send(ws, snapshotWatch(ws.room, w, 'sync')); }
-            else send(ws, snapshot(ws.room, ws.side, 'sync'));
+            const ck = ws.room.kind === 'ck';
+            if (ws.role === 'watcher') { const w = ws.room.w.get(ws.pid); if (w) send(ws, ck ? ckSnapshot(ws.room, -1, w, 'sync') : snapshotWatch(ws.room, w, 'sync')); }
+            else send(ws, ck ? ckSnapshot(ws.room, ws.side, ws.room.seats[ws.side], 'sync') : snapshot(ws.room, ws.side, 'sync'));
           }
           return;
+        case 'ckcreate': return ckCreate(ws, m);
+        case 'ckcut': return ckCut(ws, m);
+        case 'ckplay': return ckPlay(ws, m);
+        case 'ckready': return ckReady(ws);
         case 'resign':
-          if (ws.room && ws.role === 'player' && !ws.room.state.over && ws.room.p[-ws.side]) endGame(ws.room, { winner: -ws.side, reason: 'resign', by: ws.side });
+          if (ws.room && ws.room.kind !== 'ck' && ws.role === 'player' && !ws.room.state.over && ws.room.p[-ws.side]) endGame(ws.room, { winner: -ws.side, reason: 'resign', by: ws.side });
           return;
         case 'draw': return onDraw(ws, m);
         case 'rematch': return onRematch(ws);
@@ -562,7 +728,7 @@ function start(port, host, opts) {
   const sweep = setInterval(() => {
     const now = Date.now();
     for (const [code, room] of rooms) {
-      const anyone = [1, -1].some(s => room.p[s] && room.p[s].ws);
+      const anyone = players(room).some(p => p.ws);
       for (const [id, w] of room.w) if (!w.ws && w.gone && now - w.gone > WATCHER_GONE_MS) room.w.delete(id);
       if ((!anyone && now - room.lastActive > ROOM_IDLE_MS) || now - room.createdAt > ROOM_MAX_MS) rooms.delete(code);
     }

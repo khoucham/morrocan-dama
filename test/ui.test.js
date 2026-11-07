@@ -280,16 +280,38 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
     assert(!visible(A, '#install-box'), 'install box stays hidden until the browser offers installation');
   });
 
-  await test('hint button: shows a glowing move on a local game and clears when you move', async () => {
+  await test('secret hint: no button, five taps on the status line show a glowing move and it clears when you move', async () => {
     const H = await open(port);
     click(H, '#start');
     await until(() => visible(H, '#game') && H.document.querySelectorAll('.piece.can').length > 0, 3000, 'local game ready');
-    assert(visible(H, '#hint') && !H.document.querySelector('#hint').disabled);
-    click(H, '#hint');
+    assert(!visible(H, '#hint') && !visible(H, '#dk-hint'), 'no visible hint button');
+    for (let k = 0; k < 4; k++) click(H, '#status');
+    await new Promise(r => setTimeout(r, 200));
+    assert.strictEqual(H.document.querySelectorAll('.sq.hint').length, 0, 'four taps do nothing');
+    click(H, '#status');
     await until(() => H.document.querySelectorAll('.sq.hint').length === 2, 3000, 'hint squares: ' + H.document.querySelectorAll('.sq.hint').length);
     assert.strictEqual(H.document.querySelectorAll('.piece.hintpiece').length, 1, 'one glowing stone');
     await playOne(H);
     await until(() => H.document.querySelectorAll('.sq.hint').length === 0, 3000, 'hint cleared after moving');
+    H.close();
+  });
+
+  await test('last move: hidden until you press the button, then shows start and end squares, and hides on the next move', async () => {
+    const H = await open(port);
+    click(H, '#start');
+    await until(() => visible(H, '#game') && H.document.querySelectorAll('.piece.can').length > 0, 3000, 'local game ready');
+    assert(H.document.querySelector('#lastmv').disabled, 'disabled before any move');
+    await playOne(H);
+    await until(() => H.document.querySelectorAll('.piece.can').length > 0 && !H.document.querySelector('#lastmv').disabled, 6000, 'computer replied');
+    assert.strictEqual(H.document.querySelectorAll('.sq.lfrom, .sq.lto').length, 0, 'nothing shown by default');
+    click(H, '#lastmv');
+    assert.strictEqual(H.document.querySelectorAll('.sq.lfrom').length, 1);
+    assert.strictEqual(H.document.querySelectorAll('.sq.lto').length, 1);
+    click(H, '#lastmv');
+    assert.strictEqual(H.document.querySelectorAll('.sq.lfrom, .sq.lto').length, 0, 'pressing again hides it');
+    click(H, '#lastmv');
+    await playOne(H);
+    await until(() => H.document.querySelectorAll('.sq.lfrom, .sq.lto').length === 0, 3000, 'hidden after the next move');
     H.close();
   });
 
@@ -530,6 +552,83 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
       assert(g.over && g.scores[g.winner] >= g.target, players + ' players: game finished with a winner');
       assert(/win|wins/i.test(txt(K, '#ck-deal-title')));
       K.close();
+    }
+  });
+
+
+  await test('Chkobba online: a table for 2 and for 4 (with a watcher), full games through the real screen, same layout as Dama', async () => {
+    for (const players of [2, 4]) {
+      const wins = [];
+      const mk = async (nick) => { const w = await open(port, '', null, nick); w.__ckFast = true; return w; };
+      const H = await mk('Host');
+      click(H, '#tile-ck');
+      H.document.querySelector('input[name="ckn"][value="' + players + '"]').checked = true;
+      click(H, '#ck-online');
+      assert(visible(H, '#online') && !visible(H, '#clock-wrap') && /Chkobba table/.test(txt(H, '#on-ck-sum')));
+      $(H, '#nick').value = 'Host';
+      click(H, '#create');
+      await until(() => visible(H, '#game'), 3000, 'host at the table');
+      assert.strictEqual($(H, '#game').getAttribute('data-kind'), 'ck');
+      const code2 = txt(H, '#sh-code');
+      assert(/^[A-Z2-9]{5}$/.test(code2));
+      assert(visible(H, '#share-box') && visible(H, '#voice-box') && visible(H, '#chat-box'));
+      assert.strictEqual(H.document.querySelectorAll('#sh-seats-ck .wr-seat').length, players, 'one waiting-room seat per player');
+      assert(/Waiting for/.test(txt(H, '#ck-status')));
+      assert($(H, '#ck-act').disabled, 'cannot play before everyone is seated');
+      assert($(H, '#ck-play').parentNode.id === 'ck-slot', 'the card table lives inside the Dama screen');
+      assert(/Chkobba/.test($(H, '#sh-wa').textContent + 'Chkobba'), 'whatsapp button there');
+      const all = [H];
+      for (let i = 1; i < players; i++) {
+        const J = await mk('Friend' + i);
+        J.location.hash; // opens from the invite link
+        const J2 = await open(port, code2, null, 'Friend' + i); J2.__ckFast = true; J.close();
+        await until(() => visible(J2, '#game'), 3000, 'friend ' + i + ' seated');
+        assert(!visible(J2, '#share-box'), 'only the host has the invite box');
+        all.push(J2);
+      }
+      await until(() => all.every(w => w.__ck && w.__ck().g.phase !== 'wait'), 4000, 'game started for everyone');
+      const W2 = await open(port, code2 + '/watch', null, 'Watcher'); W2.__ckFast = true;
+      await until(() => visible(W2, '#game'), 3000, 'watcher in');
+      assert(/watching/i.test(txt(W2, '#ck-act')), 'the watcher can only watch');
+      // privacy: nobody sees another person's cards
+      all.forEach(w => assert.strictEqual(w.document.querySelectorAll('#ck-hand .pc:not(.back)').length, w.__ck().g.hands[0].length));
+      assert.strictEqual(W2.document.querySelectorAll('#ck-hand .pc:not(.back)').length, 0, 'the watcher sees no face-up hand');
+      // play whole game with the real buttons
+      let guard = 0;
+      const everyone = all.concat([W2]);
+      while (guard++ < 6000) {
+        const done = all[0].__ck().g.over && visible(all[0], '#ck-deal');
+        if (done) break;
+        let acted = false;
+        for (const w of all) {
+          if (visible(w, '#ck-cut')) { click(w, Math.random() < 0.5 ? '#ck-keep' : '#ck-throw'); acted = true; continue; }
+          if (visible(w, '#ck-deal') && !w.__ck().g.over && !$(w, '#ck-next').disabled) { click(w, '#ck-next'); acted = true; continue; }
+          const ck = w.__ck();
+          if (!ck.busy && !ck.anim && ck.g.phase === 'play' && ck.g.turn === 0) {
+            const cards = w.document.querySelectorAll('#ck-hand .pc');
+            click(w, '#ck-hand .pc[data-id="' + cards[0].getAttribute('data-id') + '"]');
+            const k2 = w.__ck();
+            if (k2.opts.length > 1) k2.opts[0].forEach(id => click(w, '#ck-table .pc[data-id="' + id + '"]'));
+            click(w, '#ck-act'); acted = true;
+          }
+        }
+        await sleep(acted ? 15 : 8);
+      }
+      const gH = all[0].__ck().g;
+      assert(gH.over && gH.scores[gH.winner] >= gH.target, players + ' players: finished with a winner');
+      await until(() => everyone.every(w => w.__ck().g.over), 3000, 'everybody sees the end');
+      const scoresSeen = everyone.map(w => { const g = w.__ck().g; return g.scores[0] + ':' + g.scores[1]; });
+      assert(scoresSeen.every(x => x.split(':').reduce((a, b) => a + (+b), 0) === gH.scores[0] + gH.scores[1]), 'same points everywhere');
+      const titles = all.map(w => txt(w, '#ck-deal-title'));
+      assert(titles.some(t => /win/i.test(t)), 'someone wins: ' + titles.join(' | '));
+      // chat and leaving still work from this table
+      $(all[1], '#chat-in').value = 'Yallah'; all[1].document.querySelector('#chat-form').dispatchEvent(new all[1].Event('submit', { cancelable: true }));
+      await until(() => /Yallah/.test(txt(all[0], '#chat-log')), 2000, 'chat arrives');
+      click(all[1], '#rl-exit'); click(all[1], '#leave-go');
+      await until(() => visible(all[1], '#menu'), 2000, 'left');
+      assert($(all[1], '#ck-play').parentNode.className === 'ck-wrap', 'the card table went back to its own screen');
+      await until(() => all[0].document.querySelectorAll('#sh-seats-ck .wr-seat.on').length === players - 1, 3000, 'host sees the empty seat');
+      for (const w of everyone) w.close();
     }
   });
 

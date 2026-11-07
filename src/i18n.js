@@ -23,7 +23,7 @@
     'Your friend offers a draw.': 'صديقك يعرض التعادل.', 'Accept': 'قبول', 'Decline': 'رفض',
     'Voice call': 'مكالمة صوتية', 'Join voice': 'انضم للصوت', 'Ask to speak': 'اطلب الكلام', 'Tap to hear': 'اضغط للاستماع', 'Leave voice': 'غادر الصوت',
     'Chat': 'الدردشة', 'Send': 'إرسال', 'Show invite link': 'أظهر رابط الدعوة', 'Hint': 'تلميح', 'Try again': 'حاول مرة أخرى', 'Show answer': 'أظهر الحل',
-    'Next puzzle': 'اللغز التالي', 'All puzzles': 'كل الألغاز', 'Undo move': 'تراجع عن النقلة', 'Restart': 'إعادة', 'Offer draw': 'اعرض التعادل', 'Resign': 'استسلام',
+    'Next puzzle': 'اللغز التالي', 'All puzzles': 'كل الألغاز', 'Last move': 'آخر حركة', 'Undo move': 'تراجع عن النقلة', 'Restart': 'إعادة', 'Offer draw': 'اعرض التعادل', 'Resign': 'استسلام',
     'Main menu': 'القائمة الرئيسية', 'Players agree a draw': 'اتفق اللاعبان على التعادل', 'Moves': 'النقلات', 'Undo': 'تراجع', '← Menu': '← القائمة',
     'Empty': 'فارغ', '1 seated · 1 to go': 'جالس 1 · ينقص 1', '2 seated · ready': 'جالسان · جاهزان', 'Send the code on WhatsApp': 'أرسل الرمز عبر واتساب',
     'Or tell them the code': 'أو أخبرهم بالرمز', 'What can I do?': 'ماذا أفعل؟', 'Invite watchers': 'ادعُ مشاهدين',

@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Dama">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Reem+Kufi:wght@500;700&family=Noto+Sans+Arabic:wght@400;600;700&display=swap">
+<script>var __t = 'felt'; try { __t = localStorage.getItem('dama-theme') || 'felt'; } catch (e) {} if (__t !== 'auto') document.documentElement.setAttribute('data-theme', __t);</script>
 <style>
   /* Layout: a menu view and a game view (board left, control panel right on wide screens).
      Look: night-indigo page, gold line-work, a zellige board of teal and sandstone tiles inside
@@ -38,6 +39,15 @@
     --gold: #E3B04B; --win: #52C98E; --must: #FF6A5E; --scrim: rgba(3, 5, 16, .72); --field: #0F1328;
     color-scheme: dark;
   }
+  /* Felt: deep green table, wood frame, green and sand tiles */
+  :root[data-theme="felt"] {
+    --bg: #0B3B2C; --panel: #0F4636; --fg: #F3EEDC; --muted: #A9C4B6; --line: #2F6B58;
+    --gold: #E3B04B; --win: #52C98E; --must: #FF6A5E; --scrim: rgba(2, 14, 10, .72); --field: #0A3226;
+    --frame: #4A2F18; --teal: #14604B;
+    color-scheme: dark;
+  }
+  :root[data-theme="felt"] .dock { background: transparent !important; }
+  :root[data-theme="felt"] body, :root[data-theme="felt"] #game:not([hidden]) { background: radial-gradient(ellipse at 50% 22%, #1A6B52 0%, #0B3B2C 58%, #06271D 100%) fixed; }
 
   * { box-sizing: border-box; }
   html, body { margin: 0; }
@@ -91,6 +101,11 @@
   .tag.speaking .chip { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 0 6px color-mix(in srgb, var(--win) 70%, transparent); }
   .chip { width: 22px; height: 22px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px var(--gold-bright), 0 1px 2px rgba(0,0,0,.4); transition: box-shadow .12s; }
   .chip.h, .mini.h { background: radial-gradient(circle at 35% 30%, var(--ivory-1), var(--ivory-2)); }
+  /* player picture: same animal as the voice list, ring in the colour of their stones */
+  .chip.avt.h, .chip.avt.a { width: 42px; height: 42px; display: grid; place-items: center; font-size: 23px; line-height: 1; grid-row: 1 / span 2; align-self: center; margin-inline-end: 2px;
+    background: linear-gradient(145deg, hsl(var(--hue) 70% 64%), hsl(var(--hue) 60% 38%)); box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--ring); }
+  .chip.avt.h { --ring: var(--ivory-2); } .chip.avt.a { --ring: var(--ruby-1); }
+  .lang-btn.theme-btn { inset-inline-end: auto; inset-inline-start: 12px; }
   .chip.a, .mini.a { background: radial-gradient(circle at 35% 30%, var(--ruby-1), var(--ruby-2)); }
   .tag .who { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
   .tag .badge { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--gold-ink); background: var(--gold-bright); border-radius: 99px; padding: 2px 10px; visibility: hidden; }
@@ -106,7 +121,14 @@
   .sq { position: relative; display: block; border: 0; padding: 0; margin: 0; min-width: 0; background-color: var(--sand); background-image: var(--tile-light); background-size: 100% 100%; }
   .sq.dark { background-color: var(--teal); background-image: var(--tile-dark); cursor: default; }
   .sq.go { cursor: pointer; }
-  .sq.last::after { content: ""; position: absolute; inset: 0; background: rgba(255, 214, 110, .26); pointer-events: none; }
+  /* Last move: where the piece started, the squares it landed on, where it ended, and what it captured */
+  .sq.lfrom::after, .sq.lvia::after, .sq.lto::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+  .sq.lfrom::after { background: radial-gradient(circle at center, rgba(255, 214, 110, .95) 0 11%, rgba(255, 214, 110, .5) 12% 100%); box-shadow: inset 0 0 0 3px rgba(255, 214, 110, .9); }
+  .sq.lvia::after { background: radial-gradient(circle at center, rgba(255, 214, 110, .95) 0 9%, rgba(255, 214, 110, .38) 10% 100%); }
+  .sq.lto::after { background: rgba(255, 214, 110, .45); box-shadow: inset 0 0 0 4px var(--gold-bright); animation: lastpulse 1.1s ease-out 2; }
+  .sq.lcap::after { content: "\2715"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 150%; font-weight: 800; line-height: 1; color: rgba(255, 96, 76, .95); text-shadow: 0 0 3px rgba(0, 0, 0, .55); background: rgba(255, 90, 70, .22); pointer-events: none; }
+  @keyframes lastpulse { 0% { box-shadow: inset 0 0 0 4px var(--gold-bright), 0 0 0 0 rgba(255, 214, 110, .9); } 100% { box-shadow: inset 0 0 0 4px var(--gold-bright), 0 0 0 14px rgba(255, 214, 110, 0); } }
+  @media (prefers-reduced-motion: reduce) { .sq.lto::after { animation: none; } }
   .sq.sel { box-shadow: inset 0 0 0 3px var(--gold-bright); }
   .sq.target::before { content: ""; position: absolute; left: 50%; top: 50%; width: 26%; height: 26%; transform: translate(-50%, -50%); border-radius: 50%; background: var(--gold-bright); box-shadow: 0 0 0 3px rgba(0,0,0,.28); z-index: 4; }
   .sq.target.hop::before { width: 42%; height: 42%; background: transparent; border: 4px solid var(--gold-bright); box-shadow: 0 0 0 2px rgba(0,0,0,.3); }
@@ -263,7 +285,14 @@
     .dk.round b { position: absolute; right: -2px; top: -2px; background: var(--gold-bright); color: var(--gold-ink); border-radius: 99px; font-size: 11px; line-height: 1; padding: 3px 5px; }
     .dk.pill { height: 46px; border-radius: 23px; padding: 0 20px; font-weight: 600; flex: none; color: var(--gold); border-color: var(--gold); }
     .dk.pill:disabled { opacity: .45; }
-    #dk-more { margin-left: auto; }
+    /* Order like the reference: chat on the left, menu in the middle, microphone on the right */
+    #dk-hint { order: 0; } #dk-last { order: 0; display: inline-flex; align-items: center; gap: 7px; }
+    #dk-last[hidden] { display: none; }
+    #dk-chat { order: 1; } #dk-people { order: 2; }
+    #dk-more { order: 3; margin: 0 auto; }
+    #dk-mic { order: 4; }
+    #dk-chat { background: linear-gradient(#EDC25A, #C48F22); color: var(--gold-ink); border-color: #A97812; }
+    #dk-chat svg { width: 24px; height: 24px; }
     .dk.more { font-size: 26px; font-weight: 700; line-height: 1; padding-bottom: 6px; }
     #dk-mic svg { width: 22px; height: 22px; }
     #dk-mic.live { background: linear-gradient(#3DBE80, #1C7A4B); color: #fff; border-color: transparent; }
@@ -289,9 +318,17 @@
     .reacts button { font-size: 26px; padding: 9px 0; }
     .dk-chat-first { order: -1; }
     #game[data-tab="chat"] .sheet-bg { background: transparent; }
-    #game[data-tab="chat"] #chat-box { left: 12px !important; right: 12px !important; bottom: calc(var(--dockh, 66px) + 6px + env(safe-area-inset-bottom, 0px)) !important; border-radius: 20px !important; border-bottom: 1px solid var(--line) !important; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 34px rgba(0, 0, 0, .5) !important; }
-    #game[data-tab="chat"] .chatlog { max-height: 18dvh; min-height: 0; }
-    #game[data-tab="chat"] .chatlog:empty { display: none; }
+    /* Compact dark glass popup above the bar, like a small floating card */
+    #game[data-tab="chat"] #chat-box { left: 12px !important; right: 78px !important; bottom: calc(var(--dockh, 66px) + 8px + env(safe-area-inset-bottom, 0px)) !important; max-width: 430px; border-radius: 18px !important; border: 1px solid rgba(255, 255, 255, .12) !important; padding: 10px !important; display: flex; flex-direction: column; gap: 8px; overflow: hidden; background: rgba(12, 18, 16, .88) !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: #F1ECDD; box-shadow: 0 10px 34px rgba(0, 0, 0, .55) !important; }
+    #game[data-tab="chat"] .chatlog { display: none; }
+    #game[data-tab="chat"] .reacts { gap: 5px; }
+    #game[data-tab="chat"] .reacts button { font-size: 22px; padding: 7px 0; border-radius: 10px; border: 0; background: rgba(255, 255, 255, .07); }
+    #game[data-tab="chat"] .chips { gap: 6px; }
+    #game[data-tab="chat"] .chips button { font-size: 14px; padding: 6px 12px; color: #F1ECDD; background: rgba(255, 255, 255, .04); border: 1px solid rgba(214, 190, 120, .55); }
+    #game[data-tab="chat"] .chatform { display: flex; gap: 8px; align-items: center; margin-top: 2px; }
+    #game[data-tab="chat"] #chat-in { flex: 1 1 auto; min-width: 0; height: 40px; border-radius: 12px; border: 1px solid rgba(214, 190, 120, .45); background: rgba(255, 255, 255, .05); color: #F1ECDD; padding: 0 12px; font-size: 16px; }
+    #game[data-tab="chat"] #chat-in::placeholder { color: rgba(241, 236, 221, .55); }
+    #game[data-tab="chat"] #chat-send { flex: none; width: 40px; height: 40px; border-radius: 50%; padding: 0; display: grid; place-items: center; background: transparent; border: 1px solid rgba(214, 190, 120, .7); color: #F1ECDD; }
     .call { position: static; box-shadow: none; }
     .chat-toast:not([hidden]) { display: block; position: fixed; left: 12px; right: 12px; bottom: calc(var(--dockh, 66px) + 8px + env(safe-area-inset-bottom, 0px)); z-index: 35; background: rgba(20, 24, 56, .94); color: #fff; border-radius: 14px; padding: 9px 14px; font-size: 14px; overflow-wrap: anywhere; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
     .chat-toast b { color: var(--gold-bright); }
@@ -388,6 +425,28 @@
   .door { position: fixed; top: max(8px, env(safe-area-inset-top)); inset-inline-start: 8px; z-index: 31; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--fg); display: grid; place-items: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, .25); }
   #tag-top { padding-inline-start: 52px; }
   body:not(:has(#game:not([hidden]))) .door { display: none; }
+  /* Phone: the quick buttons sit in a column at the top right, the move counter under the opponent */
+  .toprow, .topcol { display: contents; }
+  .rail, .movepill { display: none; }
+  @media (max-width: 860px) {
+    .toprow { display: flex; gap: 8px; align-items: flex-start; }
+    .topcol { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; flex: 1 1 auto; min-width: 0; }
+    .topcol .tag { width: 100%; box-sizing: border-box; }
+    #tag-top { padding-inline-start: 10px; }
+    .door { display: none !important; }
+    .movepill { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--gold); background: var(--panel); color: var(--fg); font: inherit; font-weight: 600; cursor: pointer; }
+    .movepill b { background: var(--gold-bright); color: var(--gold-ink); border-radius: 99px; padding: 2px 9px; font-size: 13px; }
+    .rail { display: flex; flex-direction: column; gap: 6px; flex: none; }
+    .rl { position: relative; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--fg); display: grid; place-items: center; padding: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: 18px; box-shadow: 0 2px 6px rgba(0, 0, 0, .18); }
+    .rl[hidden] { display: none; }
+    .rl svg { width: 20px; height: 20px; }
+    .rl b { position: absolute; right: -3px; top: -3px; background: var(--gold-bright); color: var(--gold-ink); border-radius: 99px; font-size: 11px; line-height: 1; padding: 3px 5px; }
+    .rl b:empty { display: none; }
+    #rl-snd.off { color: var(--muted); }
+    #rl-snd.off .wave { display: none; }
+    #dk-people { display: none !important; }
+    .board { width: min(100%, max(150px, calc(var(--vvh, 100dvh) - 356px))); }
+  }
   .ck-piles { display: flex; gap: 6px; justify-content: center; flex: none; font-size: 11px; color: var(--muted); }
   .ck-piles .pl { flex: 1 1 0; min-width: 0; padding: 3px 6px; border-radius: 8px; background: var(--field); border: 1px solid var(--line); text-align: center; line-height: 1.35; }
   .ck-piles .pl.us { border-top: 3px solid var(--gold-bright); } .ck-piles .pl.them { border-top: 3px solid var(--must); }
@@ -501,6 +560,39 @@
     .piece { transition: none; }
     .pulse, .piece.must .stone, .hand-badge, .rbtn.hear { animation: none; }
   }
+
+  /* ---------- Chkobba at an online table: same screen as Dama (top buttons, dock, sheets), cards instead of the board ---------- */
+  .ck-play { display: flex; flex-direction: column; gap: 6px; min-height: 0; flex: 1 1 auto; }
+  .ck-slot, .ck-scoreslot { display: none; }
+  #game[data-kind="ck"] .ck-slot { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  #game[data-kind="ck"] .ck-scoreslot { display: block; flex: 1 1 auto; min-width: 0; align-self: center; }
+  #game[data-kind="ck"] .board, #game[data-kind="ck"] #tag-top, #game[data-kind="ck"] #tag-bottom, #game[data-kind="ck"] .movepill,
+  #game[data-kind="ck"] #lastmv, #game[data-kind="ck"] #dk-last, #game[data-kind="ck"] #dk-hint, #game[data-kind="ck"] #more-box > section,
+  #game[data-kind="ck"] #undo, #game[data-kind="ck"] #restart, #game[data-kind="ck"] #odraw, #game[data-kind="ck"] #resign, #game[data-kind="ck"] #draw,
+  #game[data-kind="ck"] #offer, #game[data-kind="ck"] #status { display: none !important; }
+  #game[data-kind="ck"] #sh-seats { display: none; }
+  #game[data-kind="ck"] .ck-play { --cw: clamp(46px, min(19vw, 10.2vh), 84px); }
+  #game[data-kind="ck"] .ck-score { justify-content: flex-start; gap: 8px; font-size: 12px; }
+  #game[data-kind="ck"] .ck-score b { font-size: 20px; margin-right: 3px; }
+  #game[data-kind="ck"] .ck-score .deck { flex-basis: auto; font-size: 12px; }
+  #game[data-kind="ck"] .stage { width: 100%; }
+  .seat .sav { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: 15px; flex: none;
+    background: linear-gradient(145deg, hsl(var(--hue) 70% 64%), hsl(var(--hue) 60% 38%)); box-shadow: 0 0 0 2px var(--panel), 0 0 0 3.500px var(--gold-bright); transition: box-shadow .12s; }
+  .seat.speaking .sav { box-shadow: 0 0 0 2px var(--panel), 0 0 0 5px var(--win); }
+  .seat.off { opacity: .55; }
+  .seat.me { flex: none; justify-content: flex-start; }
+  .seat.me[hidden] { display: none; }
+  .seat.me .nm { max-width: 38vw; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; gap: 6px; }
+  .seat.left .nm, .seat.right .nm { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+  .ck-act { display: flex; gap: 8px; align-items: center; }
+  .ck-act .btn { flex: 1 1 auto; width: auto; min-width: 0; }
+  .ck-ready { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
+  .wr-seats[hidden] { display: none; }
+  .wr-seats.four { gap: 12px; flex-wrap: wrap; }
+  .wr-seat .tm { display: block; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  @media (min-width: 861px) {
+    #game[data-kind="ck"] .ck-slot { min-height: 640px; }
+  }
 </style>
 </head>
 <body>
@@ -526,6 +618,7 @@
   <!-- ===================== games hub ===================== -->
   <section id="hub" class="view">
     <button class="lang-btn" id="lang-btn" type="button" data-no-i18n aria-label="Language">العربية</button>
+    <button class="lang-btn theme-btn" id="theme-btn" type="button" data-no-i18n aria-label="Theme"></button>
     <div class="hero">
       <h1>Pick a game</h1>
       <p class="ar" lang="ar" dir="rtl">اختر لعبة</p>
@@ -577,7 +670,7 @@
     </div>
     <div class="setup">
       <div class="setup-in" id="dama-setup">
-      <button class="btn primary big" id="open-online" type="button">Play online with voice</button>
+      <button class="btn primary big" id="open-online" type="button">Play online with friends</button>
       <p class="hint hide-phone" style="margin-top:-8px">Open a private table, send your friend the link, and talk while you play.</p>
       <hr class="or">
       <fieldset>
@@ -606,8 +699,8 @@
       <div class="row small-row"><button class="btn" id="open-puzzles" type="button">Puzzles</button><button class="btn ghost" id="menu-rules" type="button">Rules</button><button class="btn ghost snd-toggle" type="button">Sound: on</button></div>
       </div>
       <div class="setup-in" id="ck-setup" hidden>
-        <button class="btn big" id="ck-online" type="button">Play online with friends</button>
-        <p class="hint" id="ck-online-note" hidden>Online Chkobba tables come next. For now you can play against the computer.</p>
+        <button class="btn primary big" id="ck-online" type="button">Play online with friends</button>
+        <p class="hint hide-phone" style="margin-top:-8px">Pick 2 players or 4 in teams below, open a private table and send the link. Voice and chat like in Dama.</p>
         <hr class="or">
         <fieldset>
           <legend>Players</legend>
@@ -618,10 +711,10 @@
           <div class="seg"><label><input type="radio" name="ckt" value="11" checked>11 points</label><label><input type="radio" name="ckt" value="21">21 points</label></div>
         </fieldset>
         <fieldset>
-          <legend>Computer level</legend>
+          <legend>Computer level (offline)</legend>
           <div class="seg"><label><input type="radio" name="ckl" value="easy">Easy</label><label><input type="radio" name="ckl" value="normal" checked>Normal</label><label><input type="radio" name="ckl" value="strong">Strong</label></div>
         </fieldset>
-        <div class="row"><button class="btn primary big" id="ck-start" type="button">Play against computer</button></div>
+        <div class="row"><button class="btn big" id="ck-start" type="button">Play against computer</button></div>
         <div class="row small-row"><button class="btn ghost" id="ck-rules-btn" type="button">Rules</button><button class="btn ghost snd-toggle" type="button">Sound: on</button></div>
       </div>
     </div>
@@ -632,10 +725,23 @@
     <button class="door" id="door" type="button" aria-label="Leave table" title="Leave table"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"/><path d="M16 8l4 4-4 4"/><path d="M20 12H9"/></svg></button>
     <div class="layout">
       <div class="stage">
-        <div class="tag" id="tag-top">
-          <span class="chip a" id="chip-top"></span><span class="who" id="who-top"></span><span class="badge" id="badge-top"></span>
-          <div class="meta"><span><b id="left-top"></b> left</span><span class="minis" id="minis-top" aria-hidden="true"></span><span id="cap-top"></span><span class="clk" id="clk-top" hidden></span></div>
+        <div class="toprow">
+          <div class="topcol">
+            <div class="tag" id="tag-top">
+              <span class="chip a" id="chip-top"></span><span class="who" id="who-top"></span><span class="badge" id="badge-top"></span>
+              <div class="meta"><span><b id="left-top"></b> left</span><span class="minis" id="minis-top" aria-hidden="true"></span><span id="cap-top"></span><span class="clk" id="clk-top" hidden></span></div>
+            </div>
+            <button class="movepill" id="moves-pill" type="button" aria-label="Move list">Moves <b id="moves-n">0</b></button>
+            <div class="ck-scoreslot" id="ck-scoreslot"></div>
+          </div>
+          <div class="rail" id="rail">
+            <button class="rl" id="rl-exit" type="button" aria-label="Leave table"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"/><path d="M16 8l4 4-4 4"/><path d="M20 12H9"/></svg></button>
+            <button class="rl" id="rl-rules" type="button" aria-label="Rules">?</button>
+            <button class="rl" id="rl-snd" type="button" aria-label="Sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16.5 9a4 4 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11"/></svg></button>
+            <button class="rl" id="rl-eye" type="button" aria-label="Who is here" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><b id="rl-count"></b></button>
+          </div>
         </div>
+        <div class="ck-slot" id="ck-slot"></div>
         <div class="board" id="board">
           <div class="grid" id="grid" role="group" aria-label="Dama board"></div>
           <div class="pieces" id="pieces"></div>
@@ -656,6 +762,7 @@
             <div class="wr-seat me"><b id="sh-me">Y</b><small>You</small></div>
             <div class="wr-seat" id="sh-seat2"><b id="sh-opp">+</b><small id="sh-opp-name">Empty</small></div>
           </div>
+          <div class="wr-seats" id="sh-seats-ck" aria-label="Who is at the table" hidden></div>
           <p class="wr-count" id="sh-count">1 seated · 1 to go</p>
           <div id="sh-opp-block" class="joinbox" style="align-items:stretch;text-align:left">
             <button class="btn wr-wa" id="sh-wa" type="button">Send the code on WhatsApp</button>
@@ -710,14 +817,15 @@
           <div class="chips" id="chips" role="group" aria-label="Quick messages"></div>
           <form class="chatform" id="chat-form" autocomplete="off">
             <input class="field" id="chat-in" maxlength="200" placeholder="Say something…" aria-label="Chat message" enterkeyhint="send">
-            <button class="btn small primary" id="chat-send" type="submit">Send</button>
+            <button class="btn small primary" id="chat-send" type="submit" aria-label="Send"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M3 20.5v-17L22 12 3 20.5zm2-3.2L16.5 12 5 6.7v4.3l7 1-7 1v4.3z"/></svg></button>
           </form>
         </section>
 
         <div class="msheet" id="more-box">
           <button class="btn" id="dk-invite" type="button" hidden>Show invite link</button>
         <div class="actions">
-          <button class="btn" id="hint" type="button">Hint</button>
+          <button class="btn" id="lastmv" type="button">Last move</button>
+          <button class="btn" id="hint" type="button" hidden>Hint</button>
           <button class="btn" id="pz-retry" type="button" hidden>Try again</button>
           <button class="btn" id="pz-hint" type="button" hidden>Hint</button>
           <button class="btn" id="pz-solve" type="button" hidden>Show answer</button>
@@ -729,6 +837,7 @@
           <button class="btn" id="resign" type="button" hidden>Resign</button>
           <button class="btn" id="g-rules" type="button">Rules</button>
           <button class="btn snd-toggle" type="button">Sound: on</button>
+          <button class="btn theme-btn" id="theme-btn2" type="button" data-no-i18n aria-label="Theme"></button>
           <button class="btn" id="to-menu" type="button">Main menu</button>
           <button class="btn" id="draw" type="button" hidden style="grid-column: 1 / -1">Players agree a draw</button>
         </div>
@@ -746,10 +855,10 @@
     <div class="react-pop" id="react-pop" hidden role="group" aria-label="Quick reactions"></div>
     <nav class="dock" id="dock" aria-label="Table controls">
       <button class="dk pill" id="dk-hint" type="button" hidden>Hint</button>
-      <button class="dk pill" id="dk-undo" type="button" hidden>Undo</button>
+      <button class="dk pill" id="dk-last" type="button" hidden><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Last move</span></button>
       <button class="dk round" id="dk-mic" type="button" aria-label="Microphone" hidden></button>
       <button class="dk round" id="dk-people" type="button" aria-label="Who is at the table" hidden>👥<b id="dk-count"></b></button>
-      <button class="dk round" id="dk-chat" type="button" aria-label="Chat and reactions" hidden>💬<i class="unread" id="dk-unread" hidden></i></button>
+      <button class="dk round" id="dk-chat" type="button" aria-label="Chat and reactions" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-8l-5 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="M8 10h8M8 13h5"/></svg><i class="unread" id="dk-unread" hidden></i></button>
       <button class="dk round more" id="dk-more" type="button" aria-label="Menu">⋯</button>
     </nav>
   </section>
@@ -758,21 +867,23 @@
   <section id="ck" class="view" hidden>
     <div class="ck-wrap">
       <div class="ck-bar"><button class="ck-ico" id="ck-menu" type="button">← Menu</button><div class="ck-score" id="ck-score"></div><button class="ck-ico" id="ck-help" type="button" aria-label="Rules">?</button></div>
-      <div class="ck-piles" id="ck-piles"></div>
-      <div class="seat top" id="ck-top"></div>
-      <div class="ck-mid">
-        <div class="seat left" id="ck-left" hidden></div>
-        <div class="ck-table" id="ck-table" aria-label="Cards on the table"></div>
-        <div class="ck-chk" id="ck-chk" hidden>Chkobba!</div>
-        <div class="ck-chk ck-haya" id="ck-haya" hidden>الحاية!</div>
-        <div class="seat right" id="ck-right" hidden></div>
+      <div class="ck-play" id="ck-play">
+        <div class="ck-piles" id="ck-piles"></div>
+        <div class="seat top" id="ck-top"></div>
+        <div class="ck-mid">
+          <div class="seat left" id="ck-left" hidden></div>
+          <div class="ck-table" id="ck-table" aria-label="Cards on the table"></div>
+          <div class="ck-chk" id="ck-chk" hidden>Chkobba!</div>
+          <div class="ck-chk ck-haya" id="ck-haya" hidden>الحاية!</div>
+          <div class="seat right" id="ck-right" hidden></div>
+        </div>
+        <div class="ck-info">
+          <div class="ck-last" id="ck-last"></div>
+          <p class="ck-status" id="ck-status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="ck-hand" id="ck-hand" aria-label="Your cards"></div>
+        <div class="ck-act"><span class="seat me" id="ck-me" hidden></span><button class="btn big" id="ck-act" type="button" disabled>Choose a card</button></div>
       </div>
-      <div class="ck-info">
-        <div class="ck-last" id="ck-last"></div>
-        <p class="ck-status" id="ck-status" role="status" aria-live="polite"></p>
-      </div>
-      <div class="ck-hand" id="ck-hand" aria-label="Your cards"></div>
-      <div class="ck-act"><button class="btn big" id="ck-act" type="button" disabled>Choose a card</button></div>
     </div>
   </section>
 </div>
@@ -780,13 +891,14 @@
 <!-- ===================== online overlay ===================== -->
 <div class="overlay" id="online" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="on-title">
-    <h2 id="on-title">Play online with voice</h2>
+    <h2 id="on-title">Play online with friends</h2>
     <p class="lead">Open a private table and send your friend the link. Tap the microphone to talk while you play. Friends can also watch, and you choose who can talk.</p>
     <div>
       <label class="cap" for="nick">Your name</label>
       <input class="field" id="nick" maxlength="20" autocomplete="nickname" placeholder="Name your friend will see">
     </div>
-    <div>
+    <p class="hint" id="on-ck-sum" hidden></p>
+    <div id="clock-wrap">
       <label class="cap" for="clock-sel">Game clock (for a table you create)</label>
       <select class="field" id="clock-sel">
         <option value="0">No clock</option>
@@ -846,7 +958,15 @@
     <table class="ck-cmp" id="ck-deal-cmp"></table>
     <ul class="ck-items" id="ck-deal-list"></ul>
     <div class="ck-total" id="ck-deal-total"></div>
+    <p class="ck-ready" id="ck-ready"></p>
     <div class="row"><button class="btn primary big" id="ck-next" type="button">Next deal</button><button class="btn" id="ck-deal-menu" type="button">Main menu</button></div>
+  </div>
+</div>
+<div class="overlay" id="moves-pop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="moves-t">
+    <h2 id="moves-t">Moves</h2>
+    <ol class="log" id="log2" aria-label="Move list" style="max-height:52dvh;overflow-y:auto"></ol>
+    <div class="row"><button class="btn primary" id="moves-close" type="button">Close</button></div>
   </div>
 </div>
 <div class="overlay" id="leave-ask" hidden>
@@ -1451,6 +1571,7 @@ const DAMA_PUZZLES = [
     $('#menu').hidden = view !== 'menu';
     $('#game').hidden = view !== 'game';
     $('#ck').hidden = view !== 'ck';
+    if (view !== 'game') ckoUnmount();
     if (view !== 'game' && typeof dockClose === 'function' && dockTab) dockClose();
     try { window.scrollTo(0, 0); } catch (e) {}
   }
@@ -1464,17 +1585,31 @@ const DAMA_PUZZLES = [
   }
 
   /* ---------- hint (against the computer or two players on one device) ---------- */
-  function showHint() {
+  function showHint(quiet) {
     if (!G || online() || G.puzzle || !humanTurn() || thinking || busy) return;
-    note('Looking for a good move…');
+    if (quiet !== true) note('Looking for a good move…');
     setTimeout(function () {
       if (!G || online() || G.puzzle) return;
       var mv = AI.chooseMove(G.board, G.turn, { depth: 12, rand: 0, time: 900 });
       if (!mv) return;
       G.hint = { from: mv.from, to: mv.path[0] }; ui = { sel: null, prefix: [] };
-      note(mv.caps.length ? 'Capture is compulsory. The glowing stone has a capture.' : 'Try the glowing stone.');
+      if (quiet !== true) note(mv.caps.length ? 'Capture is compulsory. The glowing stone has a capture.' : 'Try the glowing stone.');
       render();
     }, 30);
+  }
+  /* Secret hint: tap the status line 5 times within 3 seconds. No button, nothing on screen. */
+  (function () {
+    var taps = [];
+    $('#status').addEventListener('click', function () {
+      var now = Date.now(); taps = taps.filter(function (t) { return now - t < 3000; }); taps.push(now);
+      if (taps.length >= 5) { taps = []; showHint(true); }
+    });
+  })();
+  /* "Last move": show where the last piece started, passed, landed and what it took. Hidden again on the next move. */
+  function toggleLast() {
+    if (!G || !G.last) return;
+    G.showLast = (G.showLast === G.last) ? null : G.last;
+    render();
   }
 
   /* ---------- puzzles ---------- */
@@ -1577,6 +1712,30 @@ const DAMA_PUZZLES = [
     };
   })();
   document.addEventListener('pointerdown', function () { sfx.unlock(); }, { passive: true });
+
+  /* ---------- look: Auto (follows the phone), Night, Felt (green table), Light ---------- */
+  var theme = (function () {
+    var order = ['auto', 'dark', 'felt', 'light'];
+    var names = { auto: ['✨ Auto', '✨ تلقائي'], dark: ['🌙 Night', '🌙 ليلي'], felt: ['🌿 Felt', '🌿 أخضر'], light: ['☀️ Light', '☀️ فاتح'] };
+    var bar = { auto: '#1B2A8F', dark: '#0C0F23', felt: '#0B3B2C', light: '#1B2A8F' };
+    var cur = 'felt';
+    try { cur = localStorage.getItem('dama-theme') || 'felt'; } catch (e) {}
+    if (order.indexOf(cur) < 0) cur = 'auto';
+    function labels() {
+      var ar = document.documentElement.lang === 'ar';
+      document.querySelectorAll('.theme-btn').forEach(function (b) { b.textContent = names[cur][ar ? 1 : 0]; });
+    }
+    function apply() {
+      if (cur === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', cur);
+      var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', bar[cur]);
+      labels();
+    }
+    function next() { cur = order[(order.indexOf(cur) + 1) % order.length]; try { localStorage.setItem('dama-theme', cur); } catch (e) {} apply(); }
+    document.querySelectorAll('.theme-btn').forEach(function (b) { b.addEventListener('click', next); });
+    var lb = document.getElementById('lang-btn'); if (lb) lb.addEventListener('click', function () { setTimeout(labels, 50); });
+    apply();
+    return { next: next, get: function () { return cur; }, labels: labels };
+  })();
 
   /* ---------- pieces layer ---------- */
   function placePiece(el, i) { var v = vi(i); el.style.left = ((v & 7) * 12.5) + '%'; el.style.top = ((v >> 3) * 12.5) + '%'; }
@@ -1745,10 +1904,26 @@ const DAMA_PUZZLES = [
   }
 
   /* ---------- rendering ---------- */
+  /* The round picture on each player card: the same animal the voice list shows for that person, a robot for the computer */
+  function avatarFor(side) {
+    if (!G || G.puzzle) return null;
+    if (online()) {
+      var who = (G.crowd || []).filter(function (e) { return e.role === 'player' && e.side === side; })[0];
+      if (!who) return null;
+      var h = hashId(who.id);
+      return { emoji: AVATARS[h % AVATARS.length], hue: h % 360 };
+    }
+    if (G.cfg && G.cfg.mode === 'two') return null;
+    return /^Computer/.test(sideTitle(side)) ? { emoji: '🤖', hue: 215 } : { emoji: '😎', hue: 40 };
+  }
+
   function setTag(pos, side) {
     var alive = E.countPieces(G.board, side);
     $('#who-' + pos).textContent = sideTitle(side);
-    $('#chip-' + pos).className = 'chip ' + (side === 1 ? 'h' : 'a');
+    var av = avatarFor(side), chipEl = $('#chip-' + pos);
+    chipEl.className = 'chip ' + (side === 1 ? 'h' : 'a') + (av ? ' avt' : '');
+    chipEl.textContent = av ? av.emoji : '';
+    if (av) chipEl.style.setProperty('--hue', av.hue); else chipEl.style.removeProperty('--hue');
     $('#left-' + pos).textContent = alive;
     var enemy = 12 - E.countPieces(G.board, -side);
     $('#cap-' + pos).textContent = 'captured ' + enemy;
@@ -1809,6 +1984,7 @@ const DAMA_PUZZLES = [
 
   function render() {
     if (!G) return;
+    if (G.kind === 'ck') { ckoRender(); return; }
     var live = humanTurn();
     var mandatory = G.moves.length && G.moves[0].caps.length > 0;
     var movable = {};
@@ -1824,8 +2000,13 @@ const DAMA_PUZZLES = [
       });
       for (var k = 0; k < ui.prefix.length; k++) { trail[ui.prefix[k]] = true; capped[cand[0].caps[k]] = true; }
     }
-    var last = G.last;
+    var last = (G.last && G.showLast === G.last) ? G.last : null;   // shown only after "Last move" is pressed, hidden again on the next move
     var lf = last ? last.from : -1, lt = last ? last.path[last.path.length - 1] : -1;
+    var lvia = {}, lcap = {};
+    if (last) {
+      (last.path || []).forEach(function (x, ix) { if (ix < last.path.length - 1) lvia[x] = true; });
+      (last.caps || []).forEach(function (x) { lcap[x] = true; });
+    }
 
     var sqs = gridEl.querySelectorAll('.sq.dark');
     for (var q = 0; q < sqs.length; q++) {
@@ -1833,7 +2014,8 @@ const DAMA_PUZZLES = [
       var p = G.board[i];
       var who = p === 0 ? 'empty' : (p > 0 ? 'ivory ' : 'ruby ') + (Math.abs(p) === 2 ? 'king' : 'stone');
       s.className = 'sq dark' +
-        ((i === lf || i === lt) ? ' last' : '') +
+        (i === lf ? ' lfrom' : i === lt ? ' lto' : lvia[i] ? ' lvia' : '') +
+        ((lcap[i] && G.board[i] === 0) ? ' lcap' : '') +
         (ui.sel === i ? ' sel' : '') +
         (targets[i] ? ' target' + (hop[i] ? ' hop' : '') : '') +
         (trail[i] ? ' trail' : '') +
@@ -1862,7 +2044,9 @@ const DAMA_PUZZLES = [
 
     var on = online(), watch = iAmWatcher(), pz = !!G.puzzle;
     $('#undo').hidden = on || pz; $('#restart').hidden = on || pz;
-    $('#hint').hidden = on || pz; $('#hint').disabled = !humanTurn() || busy || thinking;
+    $('#hint').hidden = true; $('#hint').disabled = !humanTurn() || busy || thinking;   // the hint is a hidden cheat now (tap the status line 5 times)
+    $('#moves-n').textContent = G.log.length; $('#rl-eye').hidden = !on; $('#rl-snd').classList.toggle('off', !sfx.isOn());
+    $('#lastmv').hidden = pz; $('#lastmv').disabled = !G.last; $('#lastmv').classList.toggle('on', G.showLast === G.last && !!G.last);
     ['#pz-retry', '#pz-hint', '#pz-solve', '#pz-list'].forEach(function (id) { $(id).hidden = !pz; });
     $('#pz-next').hidden = !(pz && G.puzzle.step === 2);
     $('#pz-hint').disabled = $('#pz-solve').disabled = !pz || G.puzzle.step !== 0 || busy;
@@ -2030,6 +2214,8 @@ const DAMA_PUZZLES = [
   function onNet(m) {
     switch (m.t) {
       case 'joined': return onJoined(m);
+      case 'ckjoined': return ckoJoined(m);
+      case 'ckstate': case 'ckmoved': case 'ckready': return ckoMsg(m);
       case 'peer': return onPeer(m);
       case 'moved': return onMoved(m);
       case 'over': if (online()) { if (m.clock) G.clock = clockIn(m.clock); G.over = m.over; G.pending = false; G.drawOffered = false; G.moves = []; render(); setTimeout(function () { if (G && G.over) showVictory(); }, 400); } return;
@@ -2074,6 +2260,7 @@ const DAMA_PUZZLES = [
     if (!$('#online').hidden) { $('#online-err').textContent = m.message || 'Something went wrong.'; setBusyOnline(false); return; }
     if (online()) {
       G.pending = false;
+      if (G.kind === 'ck' && CK) { CK.busy = false; CK.sel = null; CK.pick = []; CK.opts = []; }
       if (m.code === 'illegal') { note(m.message || 'That move was not accepted.'); netSend({ t: 'sync' }); }
       else note(m.message || 'Something went wrong.');
       render();
@@ -2164,6 +2351,7 @@ const DAMA_PUZZLES = [
     (m.list || []).forEach(function (e) { if (e.online && e.id !== G.myId && !wasOnline[e.id] && (G.crowd || []).length) sfx.play('join'); });
     G.crowd = m.list || []; G.hostId = m.host;
     if (G.role === 'player') G.host = m.host === G.myId;
+    if (G.kind === 'ck') { ckoCrowd(); return; }
     var seat = { '1': null, '-1': null };
     G.crowd.forEach(function (e) { if (e.role === 'player') seat[e.side] = e; });
     [1, -1].forEach(function (sd) { G.names[sd] = seat[sd] ? seat[sd].name : null; });
@@ -2226,7 +2414,10 @@ const DAMA_PUZZLES = [
     net.needResume = false;
     var clockMin = +$('#clock-sel').value || 0;
     try { localStorage.setItem('dama-clock', String(clockMin)); } catch (e) {}
-    if (kind === 'create') netSend({ t: 'create', name: nick || 'Player', clock: clockMin });
+    if (kind === 'create' && onKind === 'ck') {
+      var cn = document.querySelector('input[name="ckn"]:checked'), ct = document.querySelector('input[name="ckt"]:checked');
+      netSend({ t: 'ckcreate', name: nick || 'Player', n: cn ? +cn.value : 2, target: ct ? +ct.value : 11 });
+    } else if (kind === 'create') netSend({ t: 'create', name: nick || 'Player', clock: clockMin });
     else if (kind === 'watch') netSend({ t: 'watch', code: code, name: nick || 'Guest' });
     else netSend({ t: 'join', code: code, name: nick || 'Guest' });
   }
@@ -2269,7 +2460,7 @@ const DAMA_PUZZLES = [
   window.__voice = voice;   // test hook
   var hasRTC = !!window.RTCPeerConnection;
   var hasMic = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-  var AVATARS = ['🦊', '🐯', '🦁', '🐼', '🐨', '🐸', '🦉', '🐙', '🦄', '🐧', '🐻', '🦋'];
+  var AVATARS = ['🧕', '👳‍♂️', '🧔', '👳‍♀️', '🧑‍🍳', '🐪', '🫖', '🏮', '🕌', '🌴', '🧿', '🦚'];   // Moroccan faces and symbols: headscarf, turban, beard, cook, camel, tea, lantern, mosque, palm, hamsa-style eye, peacock
   var ICON = {
     mic: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 14.5a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5a3.5 3.5 0 0 0 3.5 3.5z"/><path d="M18 11a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2z"/></svg>',
     micOff: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 14.5a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5a3.5 3.5 0 0 0 3.5 3.5z"/><path d="M18 11a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2z"/><path d="M3.5 3.5l17 17" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>',
@@ -2455,7 +2646,8 @@ const DAMA_PUZZLES = [
     var node = document.querySelector('.pp[data-pid="' + id + '"]');
     if (node) node.classList.toggle('speaking', on);
     var e = entry(id);
-    if (e && e.role === 'player') { var t = $('#tag-' + (e.side === viewSide() ? 'bottom' : 'top')); if (t) t.classList.toggle('speaking', on); }
+    if (G && G.kind === 'ck') { var sn = document.querySelectorAll('.seat[data-pid="' + id + '"]'); for (var si = 0; si < sn.length; si++) sn[si].classList.toggle('speaking', on); }
+    else if (e && e.role === 'player') { var t = $('#tag-' + (e.side === viewSide() ? 'bottom' : 'top')); if (t) t.classList.toggle('speaking', on); }
   }
   function watchLevel(key, stream) {
     stopLevel(key);
@@ -2485,8 +2677,9 @@ const DAMA_PUZZLES = [
     var self = e.id === G.myId, isHost = e.id === G.hostId, player = e.role === 'player';
     var h = hashId(e.id);
     var micOff = self ? !sending() : (!player && e.muted);
-    var role = player ? (isHost ? ICON.crown : '') + (e.side === 1 ? 'Ivory' : 'Ruby') : ICON.eye + 'Watching';
-    var cls = 'pp' + (player ? (e.side === 1 ? ' p-h' : ' p-a') : '') + (e.online ? '' : ' off');
+    var ck = G.kind === 'ck';
+    var role = player ? (isHost ? ICON.crown : '') + (ck ? (G.n === 4 ? 'Team ' + (e.seat % 2 + 1) : 'Player') : (e.side === 1 ? 'Ivory' : 'Ruby')) : ICON.eye + 'Watching';
+    var cls = 'pp' + (player ? ((ck ? e.seat % 2 === 0 : e.side === 1) ? ' p-h' : ' p-a') : '') + (e.online ? '' : ' off');
     var btn = '';
     if (G.host && !player && e.online) btn = '<button class="pm' + (e.muted ? ' on' : '') + '" type="button" data-mute="' + e.id + '">' + (e.muted ? 'Unmute' : 'Mute') + '</button>';
     return '<div class="' + cls + '" data-pid="' + e.id + '" title="' + esc(e.name) + '">' +
@@ -2561,7 +2754,15 @@ const DAMA_PUZZLES = [
   });
   syncSetup();
 
-  function openOnline(prefillCode) {
+  var onKind = 'dama';
+  function openOnline(prefillCode, kind) {
+    onKind = kind === 'ck' ? 'ck' : 'dama';
+    $('#clock-wrap').hidden = onKind === 'ck';
+    var cs = $('#on-ck-sum'); cs.hidden = onKind !== 'ck';
+    if (onKind === 'ck') {
+      var cn = document.querySelector('input[name="ckn"]:checked'), ct = document.querySelector('input[name="ckt"]:checked');
+      cs.textContent = 'Chkobba table · ' + ((cn && cn.value === '4') ? '4 players in two teams' : '2 players') + ' · first to ' + (ct ? ct.value : '11') + '. Change this on the previous screen.';
+    }
     try { $('#nick').value = localStorage.getItem('dama-nick') || ''; $('#clock-sel').value = localStorage.getItem('dama-clock') || '0'; } catch (e) {}
     $('#code').value = prefillCode || '';
     $('#online-err').textContent = '';
@@ -2573,26 +2774,23 @@ const DAMA_PUZZLES = [
   $('#start').addEventListener('click', function () { readSetup(); startGame(); });
   $('#restart').addEventListener('click', function () { startGame(); });
   $('#undo').addEventListener('click', undo);
-  var leaveArm = null;
-  $('#to-menu').addEventListener('click', function () {
-    if (online()) {
-      var b = this;
-      if (!G.over && !leaveArm) {
-        b.textContent = 'Tap again to leave';
-        leaveArm = setTimeout(function () { leaveArm = null; if (online()) b.textContent = 'Leave table'; }, 3000);
-        return;
-      }
-      clearTimeout(leaveArm); leaveArm = null;
-      leaveTable(); return;
-    }
-    clearTimeout(timer); token++; thinking = false; busy = false; closeOverlay('#victory'); show('menu');
-  });
-  $('#door').addEventListener('click', function () {
+  function askLeave() {
     var on = online(), over = G && G.over;
     $('#leave-t').textContent = on ? 'Leave the table?' : 'Back to the menu?';
-    $('#leave-p').textContent = on ? (over ? 'The game is over.' : 'Your friend will see that you left.') : 'The game on this device will be lost.';
+    $('#leave-p').textContent = on ? (over ? 'The game is over.' : (G.kind === 'ck' ? 'The others will see that you left.' : 'Your friend will see that you left.')) : 'The game on this device will be lost.';
+    try { if (typeof dockClose === 'function') dockClose(); } catch (e) {}
     openOverlay('#leave-ask');
+  }
+  $('#to-menu').addEventListener('click', askLeave);
+  $('#rl-exit').addEventListener('click', askLeave);
+  $('#rl-rules').addEventListener('click', function () { openOverlay(G && G.kind === 'ck' ? '#ck-rules' : '#rules'); });
+  $('#rl-snd').addEventListener('click', function () { sfx.toggle(); this.classList.toggle('off', !sfx.isOn()); });
+  $('#rl-eye').addEventListener('click', function () { $('#dk-people').click(); });
+  $('#moves-pill').addEventListener('click', function () {
+    var l2 = $('#log2'); l2.innerHTML = logEl.innerHTML; openOverlay('#moves-pop'); l2.scrollTop = l2.scrollHeight;
   });
+  $('#moves-close').addEventListener('click', function () { closeOverlay('#moves-pop'); });
+  $('#door').addEventListener('click', askLeave);
   $('#leave-stay').addEventListener('click', function () { closeOverlay('#leave-ask'); });
   $('#leave-go').addEventListener('click', function () {
     closeOverlay('#leave-ask');
@@ -2600,7 +2798,7 @@ const DAMA_PUZZLES = [
     clearTimeout(timer); token++; thinking = false; busy = false; closeOverlay('#victory'); show('menu');
   });
   $('#menu-rules').addEventListener('click', function () { openOverlay('#rules'); });
-  $('#g-rules').addEventListener('click', function () { openOverlay('#rules'); });
+  $('#g-rules').addEventListener('click', function () { openOverlay(G && G.kind === 'ck' ? '#ck-rules' : '#rules'); });
   $('#rules-close').addEventListener('click', function () { closeOverlay('#rules'); });
   $('#v-again').addEventListener('click', function () {
     if (online()) {
@@ -2645,6 +2843,7 @@ const DAMA_PUZZLES = [
   });
   $('#of-yes').addEventListener('click', function () { G.drawOffered = false; netSend({ t: 'draw', action: 'accept' }); render(); });
   $('#of-no').addEventListener('click', function () { G.drawOffered = false; netSend({ t: 'draw', action: 'decline' }); render(); });
+  function gameName() { return G && G.kind === 'ck' ? 'Chkobba' : 'Moroccan Dama'; }
   function copyFrom(id) {
     var inp = $(id), done = function () { note('Link copied.'); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(inp.value).then(done, function () { inp.select(); note('Press copy on your keyboard to copy the link.'); });
@@ -2657,10 +2856,10 @@ const DAMA_PUZZLES = [
   }
   $('#sh-copy').addEventListener('click', function () { copyFrom('#sh-link'); });
   $('#sh-wcopy').addEventListener('click', function () { copyFrom('#sh-wlink'); });
-  $('#sh-wa').addEventListener('click', function () { whatsapp('Play Moroccan Dama with me! Tap the link and you are at the table (code ' + G.code + '):', $('#sh-link').value); });
-  $('#sh-wwa').addEventListener('click', function () { whatsapp('Watch our Moroccan Dama game and chat! Tap the link (code ' + G.code + '):', $('#sh-wlink').value); });
+  $('#sh-wa').addEventListener('click', function () { whatsapp('Play ' + gameName() + ' with me! Tap the link and you are at the table (code ' + G.code + '):', $('#sh-link').value); });
+  $('#sh-wwa').addEventListener('click', function () { whatsapp('Watch our ' + gameName() + ' game and chat! Tap the link (code ' + G.code + '):', $('#sh-wlink').value); });
   $('#sh-share').addEventListener('click', function () {
-    if (navigator.share) navigator.share({ title: 'Moroccan Dama', text: 'Play Moroccan Dama with me. Code: ' + G.code, url: $('#sh-link').value }).catch(function () {});
+    if (navigator.share) navigator.share({ title: gameName(), text: 'Play ' + gameName() + ' with me. Code: ' + G.code, url: $('#sh-link').value }).catch(function () {});
   });
   $('#vc-mic').addEventListener('click', function () {
     if (!voice.on) voiceStart();
@@ -2679,6 +2878,7 @@ const DAMA_PUZZLES = [
   $('#watch').addEventListener('click', function () { startOnline('watch'); });
 
   $('#hint').addEventListener('click', showHint);
+  $('#lastmv').addEventListener('click', toggleLast);
   $('#open-puzzles').addEventListener('click', function () { renderPuzzleList(); openOverlay('#puzzles'); });
   $('#pz-close').addEventListener('click', function () { closeOverlay('#puzzles'); });
   $('#pz-list').addEventListener('click', function () { clearTimeout(timer); token++; busy = false; renderPuzzleList(); openOverlay('#puzzles'); });
@@ -2772,15 +2972,16 @@ const DAMA_PUZZLES = [
     var on = online();
     ['#dk-mic', '#dk-people', '#dk-chat'].forEach(function (id) { $(id).hidden = !on; });
     var pzOn = !!G.puzzle;
-    $('#dk-hint').hidden = on; $('#dk-undo').hidden = on || pzOn;
-    $('#dk-hint').disabled = pzOn ? $('#pz-hint').disabled : $('#hint').disabled;
-    $('#dk-undo').disabled = $('#undo').disabled;
+    $('#dk-hint').hidden = on || !pzOn; $('#dk-last').hidden = pzOn;
+    $('#dk-hint').disabled = $('#pz-hint').disabled;
+    $('#dk-last').disabled = !G.last; $('#dk-last').classList.toggle('on', G.showLast === G.last && !!G.last);
     $('#dk-invite').hidden = $('#share-box').hidden;
     if ((dockTab === 'invite' && $('#share-box').hidden) || ((dockTab === 'voice' || dockTab === 'chat') && !on)) dockClose();
     if (on && G.host && !G.peer && phoneMQ.matches && dockAuto !== net.code && !dockTab) { dockAuto = net.code; dockSet('invite'); }
     if (!on) dockAuto = '';
     var list = (G.crowd || []).filter(function (e) { return e.online || e.id === G.myId; });
     $('#dk-count').textContent = list.length > 1 ? list.length : '';
+    $('#rl-count').textContent = $('#dk-count').textContent;
     var mic = $('#dk-mic'), sm = serverMuted();
     mic.className = 'dk round ' + (!voice.on ? 'off' : sm ? 'locked' : voice.muted ? 'muted' : 'live');
     mic.innerHTML = (voice.on && (sm || voice.muted)) ? ICON.micOff : ICON.mic;
@@ -2796,8 +2997,8 @@ const DAMA_PUZZLES = [
   }
   $('#dk-chat').addEventListener('click', function () { dockSet('chat'); });
   $('#dk-people').addEventListener('click', function () { dockSet('voice'); });
-  $('#dk-hint').addEventListener('click', function () { $(G.puzzle ? '#pz-hint' : '#hint').click(); });
-  $('#dk-undo').addEventListener('click', function () { $('#undo').click(); });
+  $('#dk-hint').addEventListener('click', function () { $('#pz-hint').click(); });
+  $('#dk-last').addEventListener('click', toggleLast);
   $('#dk-more').addEventListener('click', function () { dockSet('more'); });
   $('#dk-invite').addEventListener('click', function () { dockSet('invite'); });
   $('#sheet-bg').addEventListener('click', dockClose);
@@ -2898,7 +3099,24 @@ const DAMA_PUZZLES = [
 
   /* ----- a game ----- */
   function ckNames(n) { return n === 2 ? ['You', 'Computer'] : ['You', 'Karim', 'Salma', 'Youssef']; }
-  function ckTeam(t) { return CK.n === 2 ? (t === 0 ? 'You' : 'Computer') : (t === 0 ? 'You & Salma' : 'Karim & Youssef'); }
+  function ckMembers(q) { var n = CK.n, out = []; for (var s = 0; s < n; s++) if ((n === 4 ? s % 2 : s) === q) out.push(s); return out; }
+  function ckTeam(t) {
+    if (!CK.online) return CK.n === 2 ? (t === 0 ? 'You' : 'Computer') : (t === 0 ? 'You & Salma' : 'Karim & Youssef');
+    return ckMembers(t).map(function (s) { return CK.names[s]; }).join(' & ');
+  }
+  function ckTeamShort(t) {
+    if (!CK.online) return CK.n === 2 ? (t === 0 ? 'You' : 'Computer') : (t === 0 ? 'Us' : 'Them');
+    if (CK.n === 2) return CK.names[t];
+    return CK.watch ? 'Team ' + (t + 1) : (t === 0 ? 'Us' : 'Them');
+  }
+  function ckYou(s) { return s === 0 && !(CK.online && CK.watch); }
+  /* what each team has taken so far: counted from the piles when I deal it, or sent by the server at an online table */
+  function ckStats(g, q) {
+    if (g.stats) { var s = g.stats[q]; return { cards: s.cards, coins: s.coins, sevens: s.sevens, sixes: s.sixes, haya: !!s.haya, chk: g.chk[q] || 0 }; }
+    var pl = g.piles[q] || [];
+    return { cards: pl.length, coins: pl.filter(function (c) { return CKE.suit(c) === 0; }).length, sevens: pl.filter(function (c) { return CKE.rank(c) === 7; }).length,
+      sixes: pl.filter(function (c) { return CKE.rank(c) === 6; }).length, haya: pl.indexOf(CKE.HAYA) >= 0, chk: g.chk[q] || 0 };
+  }
   function ckStart(n, target, level) {
     if (CK) CK.token++;
     var token = CK ? CK.token : 0;
@@ -2909,8 +3127,16 @@ const DAMA_PUZZLES = [
   function ckLater(fn, ms) { var t = CK.token; setTimeout(function () { if (CK && CK.token === t) fn(); }, ckWait(ms)); }
   function ckCutPhase() {
     var g = CK.g; CK.busy = true; CK.sel = null; CK.pick = []; CK.opts = [];
-    CK.msg = CK.names[g.dealer] + (g.dealer === 0 ? ' deal' : ' deals') + '. ' + CK.names[g.cutter] + (g.cutter === 0 ? ' cut the deck…' : ' cuts the deck…');
+    CK.msg = CK.names[g.dealer] + (ckYou(g.dealer) ? ' deal' : ' deals') + '. ' + CK.names[g.cutter] + (ckYou(g.cutter) ? ' cut the deck…' : ' cuts the deck…');
     ckRender();
+    if (CK.online) {
+      if (ckYou(g.cutter) && g.cutCard != null) {
+        $('#ck-cut-card').innerHTML = cardHtml(g.cutCard, 'big', 'div');
+        $('#ck-cut-name').textContent = cardName(g.cutCard);
+        ckLater(function () { if (CK.g.phase === 'cut') openOverlay('#ck-cut'); }, 500);
+      }
+      return;
+    }
     if (g.cutter === 0) {
       $('#ck-cut-card').innerHTML = cardHtml(g.cutCard, 'big', 'div');
       $('#ck-cut-name').textContent = cardName(g.cutCard);
@@ -2926,24 +3152,38 @@ const DAMA_PUZZLES = [
   }
   function ckNext() {
     var g = CK.g;
+    if (CK.online) {
+      CK.anim = false;
+      if (g.phase === 'play') {
+        if (g.turn === 0 && !CK.watch) { CK.busy = false; if (!CK.last) CK.msg = 'Your turn.'; ckRender(); sfx.play('turn'); try { if (navigator.vibrate && document.hidden) navigator.vibrate(60); } catch (e) {} }
+        else { CK.busy = true; ckRender(); }
+      }
+      ckDrain();
+      return;
+    }
     if (g.phase !== 'play') return;
     if (g.turn === 0) { CK.busy = false; if (!CK.last) CK.msg = 'Your turn.'; ckRender(); sfx.play('turn'); }
     else { CK.busy = true; ckRender(); ckLater(function () { var m = aiMove(g, g.turn); ckDo(g.turn, m.card, m.take); }, 1000); }
   }
   function ckDo(seat, card, take) {
-    var g = CK.g, before = g.table.slice(), r = CKE.play(g, seat, card, take), nm = CK.names[seat];
+    var g = CK.g, before = g.table.slice(), r = CKE.play(g, seat, card, take);
+    ckShowMove(seat, card, take, r, before);
+  }
+  function ckShowMove(seat, card, take, r, before) {
+    var g = CK.g, nm = CK.names[seat];
+    CK.anim = true;
     // Show the move on the table first: the played card lands, the cards taken glow, then they fly to the one who took them.
     var dir = seat === 0 ? 'down' : g.n === 2 ? 'up' : ['down', 'right', 'up', 'left'][seat];
     CK.show = { table: before.concat([card]), played: card, took: take.slice(), dir: dir };
-    CK.last = { seat: seat, card: card, took: take.slice(), chk: r.chkobba, text: nm + (seat === 0 ? ' took ' : ' took ') };
-    CK.msg = take.length ? nm + ' took with ' + cardShort(card) + (r.chkobba ? ' — Chkobba!' : '.') : nm + (seat === 0 ? ' put down ' : ' puts down ') + cardShort(card) + '.';
-    if (!take.length && seat !== 0) CK.msg = nm + ' put down ' + cardShort(card) + '.';
+    CK.last = { seat: seat, card: card, took: take.slice(), chk: r.chkobba, text: nm + ' took ' };
+    CK.msg = take.length ? nm + ' took with ' + cardShort(card) + (r.chkobba ? ' — Chkobba!' : '.') : nm + (ckYou(seat) ? ' put down ' : ' puts down ') + cardShort(card) + '.';
+    if (!take.length && !ckYou(seat)) CK.msg = nm + ' put down ' + cardShort(card) + '.';
     if (r.dealtMore) CK.msg += g.deck.length ? ' New cards.' : ' New cards — last round! The last play can’t score a Chkobba.';
     sfx.play(r.chkobba ? 'king' : take.length ? 'capture' : 'move');
     if (take.length && (card === CKE.HAYA || take.indexOf(CKE.HAYA) >= 0)) { sfx.play('haya', r.chkobba ? 0.55 : 0.12); CK.msg += ' 7♦!'; CK.last.haya = true; }   // the seven of diamonds gets its own chime
     CK.sel = null; CK.pick = []; CK.opts = [];
     ckRender();
-    if (r.ended) ckLater(function () { CK.show = null; ckRender(); ckShowDeal(r); }, 1700);
+    if (r.ended) ckLater(function () { CK.show = null; CK.anim = false; ckRender(); ckShowDeal(r); ckDrain(); }, 1700);
     else if (take.length) {
       var long = r.chkobba || CK.last.haya ? 1100 : 0;
       ckLater(function () { var els = document.querySelectorAll('#ck-table .pc.took, #ck-table .pc.played'); for (var i = 0; i < els.length; i++) els[i].classList.add('fly-' + dir); }, 1150 + long);
@@ -2960,6 +3200,7 @@ const DAMA_PUZZLES = [
   function ckSelect(id) {
     var g = CK.g;
     if (CK.busy || g.phase !== 'play' || g.turn !== 0) return;
+    if (CK.online && (CK.watch || !G || !G.peer)) return;
     if (CK.sel === id) { ckConfirm(); return; }
     CK.sel = id; CK.opts = CKE.captures(g.table, id); CK.pick = CK.opts.length === 1 ? CK.opts[0].slice() : [];
     ckRender();
@@ -2972,43 +3213,56 @@ const DAMA_PUZZLES = [
   }
   function ckConfirm() {
     if (CK.busy || !ckReady()) return;
-    CK.busy = true; ckDo(0, CK.sel, CK.pick.slice());
+    CK.busy = true;
+    if (CK.online) { netSend({ t: 'ckplay', card: CK.sel, take: CK.pick.slice() }); ckRender(); return; }
+    ckDo(0, CK.sel, CK.pick.slice());
   }
 
   /* ----- the end of a deal and of the game ----- */
   var ITEM = { cards: 'Most cards', coins: 'Most diamonds', sevens: 'Most sevens', haya: '7 of diamonds', chkobba: 'Chkobba' };
   function ckShowDeal(r) {
-    var g = CK.g, T = g.n === 4 ? 2 : g.n, rows = '';
-    r.score.items.forEach(function (it) {
-      rows += '<li class="' + (it.team === 0 ? 'us' : 'them') + '"><span>' + ITEM[it.what] + (it.count > 1 ? ' ×' + it.count : '') + '</span><b>' + ckTeam(it.team) + ' +' + (it.count || 1) + '</b></li>';
+    var g = CK.g, rows = '';
+    var items = r && r.score ? r.score.items : [];
+    items.forEach(function (it) {
+      rows += '<li class="' + (it.team === 0 ? 'us' : 'them') + '"><span>' + ITEM[it.what] + (it.count > 1 ? ' ×' + it.count : '') + '</span><b>' + esc(ckTeam(it.team)) + ' +' + (it.count || 1) + '</b></li>';
     });
     (function () {
-      var h = '', T2 = g.n === 4 ? 2 : g.n;
-      function cnt(q, f) { return (g.piles[q] || []).filter(f).length; }
-      var rowsD = [['Cards', function (c) { return true; }], ['Diamonds', function (c) { return CKE.suit(c) === 0; }], ['Sevens', function (c) { return CKE.rank(c) === 7; }], ['Sixes', function (c) { return CKE.rank(c) === 6; }]];
+      var h = '', s0 = ckStats(g, 0), s1 = ckStats(g, 1);
+      var rowsD = [['Cards', 'cards'], ['Diamonds', 'coins'], ['Sevens', 'sevens'], ['Sixes', 'sixes']];
       h += '<tr><th></th><th>' + esc(ckTeam(0)) + '</th><th>' + esc(ckTeam(1)) + '</th></tr>';
-      rowsD.forEach(function (rw) { var a = cnt(0, rw[1]), b = cnt(1, rw[1]); h += '<tr><td>' + rw[0] + '</td><td class="' + (a > b ? 'win' : '') + '">' + a + '</td><td class="' + (b > a ? 'win' : '') + '">' + b + '</td></tr>'; });
-      h += '<tr><td>7♦</td><td>' + ((g.piles[0] || []).indexOf(CKE.HAYA) >= 0 ? '✓' : '') + '</td><td>' + ((g.piles[1] || []).indexOf(CKE.HAYA) >= 0 ? '✓' : '') + '</td></tr>';
-      h += '<tr><td>Chkobba</td><td>' + (g.chk[0] || 0) + '</td><td>' + (g.chk[1] || 0) + '</td></tr>';
+      rowsD.forEach(function (rw) { var a = s0[rw[1]], b = s1[rw[1]]; h += '<tr><td>' + rw[0] + '</td><td class="' + (a > b ? 'win' : '') + '">' + a + '</td><td class="' + (b > a ? 'win' : '') + '">' + b + '</td></tr>'; });
+      h += '<tr><td>7♦</td><td>' + (s0.haya ? '✓' : '') + '</td><td>' + (s1.haya ? '✓' : '') + '</td></tr>';
+      h += '<tr><td>Chkobba</td><td>' + s0.chk + '</td><td>' + s1.chk + '</td></tr>';
       $('#ck-deal-cmp').innerHTML = h;
     })();
-    $('#ck-deal-title').textContent = g.over ? (g.winner === 0 ? (CK.n === 2 ? 'You win!' : 'Your team wins!') : (CK.n === 2 ? 'Computer wins' : 'They win')) : 'Deal finished';
-    $('#ck-deal-list').innerHTML = rows || '<li><span>No points this deal</span></li>';
-    $('#ck-deal-total').innerHTML = '<span class="us"><b>' + g.scores[0] + '</b>' + ckTeam(0) + '</span><span class="to">to ' + g.target + '</span><span class="them"><b>' + g.scores[1] + '</b>' + ckTeam(1) + '</span>';
-    $('#ck-next').textContent = g.over ? 'Play again' : 'Next deal';
+    var title;
+    if (!g.over) title = 'Deal finished';
+    else if (CK.online) title = CK.watch ? ckTeam(g.winner) + (CK.n === 2 ? ' wins' : ' win') : g.winner === 0 ? (CK.n === 2 ? 'You win!' : 'Your team wins!') : (CK.n === 2 ? CK.names[1] + ' wins' : 'They win');
+    else title = g.winner === 0 ? (CK.n === 2 ? 'You win!' : 'Your team wins!') : (CK.n === 2 ? 'Computer wins' : 'They win');
+    $('#ck-deal-title').textContent = title;
+    $('#ck-deal-list').innerHTML = rows || (r && r.score ? '<li><span>No points this deal</span></li>' : '');
+    $('#ck-deal-total').innerHTML = '<span class="us"><b>' + g.scores[0] + '</b>' + esc(ckTeamShort(0)) + '</span><span class="to">to ' + g.target + '</span><span class="them"><b>' + g.scores[1] + '</b>' + esc(ckTeamShort(1)) + '</span>';
+    var nx = $('#ck-next');
+    nx.textContent = g.over ? 'Play again' : 'Next deal'; nx.disabled = false; nx.hidden = false;
+    $('#ck-deal-menu').textContent = 'Main menu'; $('#ck-ready').textContent = '';
+    if (CK.online) { $('#ck-deal-menu').textContent = 'Leave table'; ckoReadyNote(); }
     openOverlay('#ck-deal');
-    sfx.play(g.over ? (g.winner === 0 ? 'win' : 'lose') : 'turn');
+    sfx.play(g.over ? (g.winner === 0 && !CK.watch ? 'win' : CK.watch ? 'win' : 'lose') : 'turn');
     ckRender();
   }
 
   /* ----- drawing the screen ----- */
+  function ckAvatar(id) { var h = hashId(id); return { emoji: AVATARS[h % AVATARS.length], hue: h % 360 }; }
+  function ckChip(pe) { if (!pe) return ''; var av = ckAvatar(pe.id); return '<span class="sav" style="--hue:' + av.hue + '">' + av.emoji + '</span>'; }
   function ckSeat(el, seat, pos) {
     var g = CK.g, box = $(el);
     if (seat == null) { box.innerHTML = ''; box.hidden = true; return; }
     box.hidden = false;
-    var n = g.hands[seat].length, turn = g.turn === seat && g.phase === 'play';
-    box.className = 'seat ' + pos + (turn ? ' turn' : '');
-    box.innerHTML = '<span class="nm">' + esc(CK.names[seat]) + (g.dealer === seat ? ' <em>D</em>' : '') + '</span><span class="fan">' + backs(n) + '</span>';
+    var n = g.hands[seat] ? g.hands[seat].length : 0, turn = g.turn === seat && g.phase === 'play';
+    var pe = CK.online && CK.people ? CK.people[seat] : null;
+    box.className = 'seat ' + pos + (turn ? ' turn' : '') + (pe && !pe.online ? ' off' : '') + (pe && voice.speaking[pe.id] ? ' speaking' : '');
+    if (pe) box.setAttribute('data-pid', pe.id); else box.removeAttribute('data-pid');
+    box.innerHTML = '<span class="nm">' + ckChip(pe) + '<span>' + esc(CK.names[seat]) + (g.dealer === seat && g.phase !== 'wait' ? ' <em>D</em>' : '') + '</span></span><span class="fan">' + backs(n) + '</span>';
   }
   /* make the cards on the table as large as they can be while all of them stay visible */
   function ckFit() {
@@ -3023,16 +3277,16 @@ const DAMA_PUZZLES = [
     t.style.setProperty('--cw', cw + 'px');
     var box = t.querySelector('.cards'); if (box) box.style.maxWidth = (even * (cw + 8) - 8) + 'px';   // 4 cards: 4 in a row or 2 and 2, never 3 and 1
   }
-  window.addEventListener('resize', function () { if (CK && !$('#ck').hidden) ckFit(); });
+  window.addEventListener('resize', function () { if (CK && (CK.online || !$('#ck').hidden)) ckFit(); });
   function ckRender() {
     var g = CK.g, n = g.n, teamOf = function (s) { return CKE.teamOf(g, s); };
-    $('#ck-score').innerHTML = '<span class="us"><b>' + g.scores[0] + '</b>' + (n === 2 ? 'You' : 'Us') + '</span><span class="to">to ' + g.target + '</span><span class="them"><b>' + g.scores[1] + '</b>' + (n === 2 ? 'Computer' : 'Them') + '</span><span class="deck' + (g.deck.length ? '' : ' lastround') + '">' + (g.deck.length ? 'Deck ' + g.deck.length : 'Last round') + '</span>';
+    var deckTxt = g.phase === 'wait' ? '' : g.deck.length ? 'Deck ' + g.deck.length : 'Last round';
+    $('#ck-score').innerHTML = '<span class="us"><b>' + g.scores[0] + '</b>' + esc(ckTeamShort(0)) + '</span><span class="to">to ' + g.target + '</span><span class="them"><b>' + g.scores[1] + '</b>' + esc(ckTeamShort(1)) + '</span>' + (deckTxt ? '<span class="deck' + (g.deck.length ? '' : ' lastround') + '">' + deckTxt + '</span>' : '');
     (function () {
       var T = n === 4 ? 2 : n, h = '';
       for (var q = 0; q < T; q++) {
-        var pl = g.piles[q] || [];
-        var dm = pl.filter(function (c) { return CKE.suit(c) === 0; }).length, sv = pl.filter(function (c) { return CKE.rank(c) === 7; }).length;
-        h += '<span class="pl ' + (q === 0 ? 'us' : 'them') + '"><i>' + esc(n === 2 ? (q === 0 ? 'You' : 'Computer') : (q === 0 ? 'Us' : 'Them')) + '</i><em><b>' + pl.length + '</b> <u>cards</u></em><em><b>' + dm + '</b> ♦</em><em><b>' + sv + '</b> <u>sevens</u></em>' + (pl.indexOf(CKE.HAYA) >= 0 ? '<em>7♦</em>' : '') + ((g.chk[q] || 0) ? '<em><b>' + g.chk[q] + '</b> <u>Chkobba</u></em>' : '') + '</span>';
+        var st = ckStats(g, q);
+        h += '<span class="pl ' + (q === 0 ? 'us' : 'them') + '"><i>' + esc(ckTeamShort(q)) + '</i><em><b>' + st.cards + '</b> <u>cards</u></em><em><b>' + st.coins + '</b> ♦</em><em><b>' + st.sevens + '</b> <u>sevens</u></em>' + (st.haya ? '<em>7♦</em>' : '') + (st.chk ? '<em><b>' + st.chk + '</b> <u>Chkobba</u></em>' : '') + '</span>';
       }
       $('#ck-piles').innerHTML = h;
     })();
@@ -3047,7 +3301,15 @@ const DAMA_PUZZLES = [
       return cardHtml(id, (optIds.indexOf(id) >= 0 ? 'opt ' : '') + (picks.indexOf(id) >= 0 ? 'picked' : ''));
     }).join('') + '</div>' : '<span class="empty">The table is empty</span>';
     ckFit();
-    $('#ck-hand').innerHTML = g.hands[0].map(function (id) { return cardHtml(id, (CK.sel === id ? 'sel' : '') + (CK.busy || g.turn !== 0 ? ' wait' : '')); }).join('');
+    $('#ck-hand').innerHTML = CK.watch ? backs(g.hands[0].length) : g.hands[0].map(function (id) { return cardHtml(id, (CK.sel === id ? 'sel' : '') + (CK.busy || g.turn !== 0 ? ' wait' : '')); }).join('');
+    var meBox = $('#ck-me');
+    if (CK.online) {
+      var pe0 = CK.people ? CK.people[0] : null;
+      meBox.hidden = false;
+      meBox.className = 'seat me' + (g.turn === 0 && g.phase === 'play' ? ' turn' : '') + (pe0 && voice.speaking[pe0.id] ? ' speaking' : '');
+      if (pe0) meBox.setAttribute('data-pid', pe0.id);
+      meBox.innerHTML = '<span class="nm">' + ckChip(pe0) + '<span>' + esc(CK.names[0]) + (g.dealer === 0 && g.phase !== 'wait' ? ' <em>D</em>' : '') + '</span></span>';
+    } else meBox.hidden = true;
     // last play, shown as small cards
     var lp = CK.last, lh = '';
     if (lp) lh = cardHtml(lp.card, 'mini', 'div') + (lp.took.length ? '<span class="arrow">→</span>' + lp.took.map(function (t) { return cardHtml(t, 'mini', 'div'); }).join('') : '<span class="arrow">↓</span>');
@@ -3056,7 +3318,9 @@ const DAMA_PUZZLES = [
     $('#ck-chk').hidden = !(lp && lp.chk && CK.show);
     $('#ck-haya').hidden = !(lp && lp.haya && CK.show);
     var act = $('#ck-act'), label;
-    if (g.phase !== 'play' || CK.busy || g.turn !== 0) { label = g.phase === 'play' && g.turn !== 0 ? 'Waiting for ' + CK.names[g.turn] + '…' : '…'; act.disabled = true; }
+    if (CK.online && CK.watch) { label = 'You are watching'; act.disabled = true; }
+    else if (CK.online && (g.phase === 'wait' || !G.peer)) { label = 'Waiting for players…'; act.disabled = true; }
+    else if (g.phase !== 'play' || CK.busy || g.turn !== 0) { label = g.phase === 'play' && g.turn !== 0 ? 'Waiting for ' + CK.names[g.turn] + '…' : '…'; act.disabled = true; }
     else if (CK.sel == null) { label = 'Choose a card'; act.disabled = true; }
     else if (!CK.opts.length) { label = 'Put it down'; act.disabled = false; }
     else if (ckReady()) { label = 'Take'; act.disabled = false; }
@@ -3069,14 +3333,30 @@ const DAMA_PUZZLES = [
   $('#ck-hand').addEventListener('click', function (e) { var c = e.target.closest('.pc'); if (c && CK) ckSelect(+c.getAttribute('data-id')); });
   $('#ck-table').addEventListener('click', function (e) { var c = e.target.closest('.pc'); if (c && CK) ckPickTable(+c.getAttribute('data-id')); });
   $('#ck-act').addEventListener('click', function () { if (CK) ckConfirm(); });
-  $('#ck-keep').addEventListener('click', function () { if (CK && CK.g.phase === 'cut') ckApplyCut(true); });
-  $('#ck-throw').addEventListener('click', function () { if (CK && CK.g.phase === 'cut') ckApplyCut(false); });
+  function ckCutChoice(keep) {
+    if (!CK || CK.g.phase !== 'cut') return;
+    if (CK.online) { closeOverlay('#ck-cut'); netSend({ t: 'ckcut', keep: keep }); return; }
+    ckApplyCut(keep);
+  }
+  $('#ck-keep').addEventListener('click', function () { ckCutChoice(true); });
+  $('#ck-throw').addEventListener('click', function () { ckCutChoice(false); });
   $('#ck-next').addEventListener('click', function () {
+    if (CK.online) {
+      if (CK.watch) return;
+      if (CK.ready.indexOf(CK.mySeat) < 0) CK.ready.push(CK.mySeat);
+      this.disabled = true; this.textContent = 'Waiting for the others…'; ckoReadyNote();
+      netSend({ t: 'ckready' });
+      return;
+    }
     closeOverlay('#ck-deal');
     if (CK.g.over) { ckStart(CK.n, CK.g.target); return; }
     CKE.nextDeal(CK.g, Math.random); CK.last = null; ckCutPhase();
   });
-  $('#ck-deal-menu').addEventListener('click', function () { CK.token++; closeOverlay('#ck-deal'); show('menu'); });
+  $('#ck-deal-menu').addEventListener('click', function () {
+    closeOverlay('#ck-deal');
+    if (CK.online) { leaveTable(); return; }
+    CK.token++; show('menu');
+  });
   $('#ck-menu').addEventListener('click', function () {
     var b = this;
     if (!CK.quit) { b.textContent = 'Tap again to quit'; CK.quit = setTimeout(function () { if (CK) { CK.quit = null; } b.textContent = '← Menu'; }, 3000); return; }
@@ -3085,7 +3365,7 @@ const DAMA_PUZZLES = [
   $('#ck-help').addEventListener('click', function () { openOverlay('#ck-rules'); });
   $('#ck-rules-btn').addEventListener('click', function () { openOverlay('#ck-rules'); });
   $('#ck-rules-close').addEventListener('click', function () { closeOverlay('#ck-rules'); });
-  $('#ck-online').addEventListener('click', function () { $('#ck-online-note').hidden = false; });
+  $('#ck-online').addEventListener('click', function () { openOnline('', 'ck'); });
   $('#ck-start').addEventListener('click', function () {
     var v = function (nm) { var c = document.querySelector('input[name="' + nm + '"]:checked'); return c ? +c.value : null; };
     var n = v('ckn') || 2, t = v('ckt') || 11, lv = (document.querySelector('input[name="ckl"]:checked') || {}).value || 'normal';
@@ -3095,6 +3375,176 @@ const DAMA_PUZZLES = [
   (function ckPrefs() {
     try { var s = JSON.parse(localStorage.getItem('dama-ck') || 'null'); if (s) { var a = document.querySelector('input[name="ckn"][value="' + s.n + '"]'), b = document.querySelector('input[name="ckt"][value="' + s.t + '"]'); if (a) a.checked = true; if (b) b.checked = true; } } catch (e) {}
   })();
+
+
+  /* =====================================================================
+     ONLINE CHKOBBA: the server deals and shuffles and sends each person only their own cards.
+     The table uses the same screen as Dama (top buttons, bottom bar, voice, chat). Here the server's view is
+     turned around so that I am always seat 0 at the bottom, then the normal drawing code does the rest.
+     ===================================================================== */
+  var CKO_EMPTY_STATS = { cards: 0, coins: 0, sevens: 0, sixes: 0, haya: false };
+  function ckoMount() {
+    var play = $('#ck-play'), slot = $('#ck-slot');
+    if (play.parentNode !== slot) slot.appendChild(play);
+    var sc = $('#ck-score'), host = $('#ck-scoreslot');
+    if (sc.parentNode !== host) host.appendChild(sc);
+    $('#game').setAttribute('data-kind', 'ck');
+    $('#sh-seats-ck').hidden = false;
+  }
+  function ckoUnmount() {
+    var play = $('#ck-play');
+    if (play.parentNode.id === 'ck-slot') {
+      document.querySelector('.ck-wrap').appendChild(play);
+      var bar = document.querySelector('.ck-bar'); bar.insertBefore($('#ck-score'), $('#ck-help'));
+      $('#game').removeAttribute('data-kind'); $('#sh-seats-ck').hidden = true;
+      closeOverlay('#ck-cut'); closeOverlay('#ck-deal');
+    }
+    if (CK && CK.online) { CK.token++; CK = null; }
+  }
+  function ckoBuild(v) {
+    var n = CK.n, ms = CK.mySeat, i;
+    function rot(s) { return (s - ms + n) % n; }
+    var mt = n === 4 ? ms % 2 : ms, swap = mt === 1;
+    if (!v) return { n: n, target: CK.target, dealer: 0, cutter: 0, phase: 'wait', turn: 0, scores: [0, 0], over: false, winner: null, deck: [], table: [], hands: ckoBlank(n), stats: [CKO_EMPTY_STATS, CKO_EMPTY_STATS], chk: [0, 0], deals: 0, cutCard: null };
+    var hands = [];
+    for (i = 0; i < n; i++) {
+      var h;
+      if (i === ms && !CK.watch) h = (v.hand || []).slice(); else { h = []; for (var k = 0; k < v.handN[i]; k++) h.push(-1); }
+      hands[rot(i)] = h;
+    }
+    var deck = []; for (i = 0; i < v.deck; i++) deck.push(-1);
+    function two(a) { return swap ? [a[1], a[0]] : [a[0], a[1]]; }
+    return { n: n, target: v.target, dealer: rot(v.dealer), cutter: rot(v.cutter), phase: v.phase, turn: rot(v.turn), scores: two(v.scores), over: !!v.over,
+      winner: v.winner == null ? null : (swap ? 1 - v.winner : v.winner), deck: deck, table: v.table.slice(), hands: hands, stats: two(v.stats), chk: two(v.chk), deals: v.deals, cutCard: v.cutCard };
+  }
+  function ckoBlank(n) { var h = []; for (var i = 0; i < n; i++) h.push([]); return h; }
+  function ckoTeam(t) { return (CK.n === 4 ? CK.mySeat % 2 : CK.mySeat) === 1 ? 1 - t : t; }
+  function ckoSyncPeople() {
+    if (!CK || !G) return;
+    var n = CK.n, seated = 0;
+    CK.people = [];
+    (G.crowd || []).forEach(function (e) { if (e.role === 'player' && e.seat != null) { CK.people[(e.seat - CK.mySeat + n) % n] = e; seated++; } });
+    for (var s = 0; s < n; s++) { var e = CK.people[s]; CK.names[s] = (s === 0 && !CK.watch) ? 'You' : e ? e.name : 'Waiting…'; }
+    G.peer = seated === n;
+  }
+  function ckoReadyNote() {
+    if (!CK || !CK.online) return;
+    var need = (G.crowd || []).filter(function (e) { return e.role === 'player' && e.online; }).length || CK.n;
+    $('#ck-ready').textContent = CK.ready.length + ' of ' + need + ' ready';
+  }
+  function ckoShare() {
+    var n = CK.n, c = G.crowd || [], seats = [], filled = 0, h = '';
+    c.forEach(function (e) { if (e.role === 'player') { seats[e.seat] = e; filled++; } });
+    for (var s = 0; s < n; s++) {
+      var e = seats[s];
+      h += '<div class="wr-seat' + (e ? ' on' : '') + (e && e.id === G.myId ? ' me' : '') + '"><b>' + (e ? esc((e.name || '?').trim().charAt(0).toUpperCase()) : '+') + '</b><small>' + (e ? esc(e.name) : 'Empty') + '</small>' + (n === 4 ? '<span class="tm">Team ' + (s % 2 + 1) + '</span>' : '') + '</div>';
+    }
+    var box = $('#sh-seats-ck');
+    box.className = 'wr-seats' + (n === 4 ? ' four' : '');
+    if (box.getAttribute('data-sig') !== h) { box.innerHTML = h; box.setAttribute('data-sig', h); }
+    var full = filled === n, base = location.origin + location.pathname + '#' + G.code;
+    $('#sh-code').textContent = G.code; $('#sh-link').value = base; $('#sh-wlink').value = base + '/watch';
+    $('#sh-opp-block').hidden = full;
+    $('#sh-count').textContent = full ? 'Everyone is seated · ready' : filled + ' seated · ' + (n - filled) + ' to go';
+    $('#sh-info').textContent = 'Chkobba · ' + (n === 4 ? '4 players in teams' : '2 players') + ' · to ' + G.target;
+    $('#sh-title').textContent = full ? 'Invite watchers' : (n === 2 ? 'Invite your friend' : 'Invite your friends');
+    $('#sh-share').hidden = !navigator.share;
+  }
+  function ckoRender() {
+    if (!G || G.kind !== 'ck' || !CK || !CK.online) return;
+    ckoSyncPeople();
+    var g = CK.g;
+    if (!G.peer) { CK.waiting = true; CK.msg = 'Waiting for ' + (CK.n - (G.crowd || []).filter(function (e) { return e.role === 'player'; }).length || 1) + ' more to sit down…'; }
+    else if (CK.waiting) { CK.waiting = false; CK.msg = g.phase === 'play' && g.turn === 0 && !CK.watch ? 'Your turn.' : (g.phase === 'wait' ? 'Starting…' : ''); }
+    ckRender();
+    $('#rl-eye').hidden = false; $('#rl-snd').classList.toggle('off', !sfx.isOn());
+    $('#share-box').hidden = !(G.host);
+    $('#voice-box').hidden = false; $('#chat-box').hidden = false;
+    ckoShare();
+    renderVoice();
+    dockSync();
+  }
+
+  /* an arriving table message: wait while a move is still being shown */
+  function ckDrain() {
+    if (!CK || !CK.online) return;
+    CK.anim = false;
+    var m = CK.q.shift();
+    if (m) ckoApply(m);
+  }
+  function ckoMsg(m) {
+    if (!G || G.kind !== 'ck' || !CK || !CK.online) return;
+    if (CK.anim) { CK.q.push(m); return; }
+    ckoApply(m);
+  }
+  function ckoApply(m) {
+    if (!G || !CK || !CK.online) return;
+    if (m.t === 'ckready') { CK.ready = m.ready || []; if (!$('#ck-deal').hidden) { var nx = $('#ck-next'); nx.disabled = CK.ready.indexOf(CK.mySeat) >= 0; if (!nx.disabled) nx.textContent = CK.g.over ? 'Play again' : 'Next deal'; ckoReadyNote(); } return; }
+    if (m.t === 'ckstate') {                                  // a new game or a new deal
+      closeOverlay('#ck-deal'); closeOverlay('#ck-cut');
+      CK.g = ckoBuild(m.view); CK.last = null; CK.show = null; CK.ready = []; CK.waiting = false; CK.token++;
+      ckoRender(); ckoCutPhase();
+      return;
+    }
+    if (m.t !== 'ckmoved') return;
+    var ev = m.ev, before = CK.g.table.slice();
+    CK.g = ckoBuild(m.view);
+    if (ev.k === 'cut') {
+      var seat = (ev.seat - CK.mySeat + CK.n) % CK.n;
+      closeOverlay('#ck-cut');
+      CK.msg = CK.names[seat] + (ev.keep ? ' kept the card.' : ' threw the card on the table.') + ' ' + ev.tableN + ' cards on the table.'; CK.last = null;
+      CK.anim = true; sfx.play('move'); ckoRender(); ckLater(ckNext, 1800);
+      return;
+    }
+    if (ev.k === 'play') {
+      var rs = (ev.seat - CK.mySeat + CK.n) % CK.n;
+      var score = ev.score ? { items: ev.score.items.map(function (it) { var o = {}; for (var k in it) o[k] = it[k]; o.team = ckoTeam(it.team); return o; }) } : null;
+      CK.sel = null; CK.pick = []; CK.opts = [];
+      ckShowMove(rs, ev.card, ev.took || [], { chkobba: !!ev.chk, dealtMore: !!ev.more, ended: !!ev.ended, score: score }, before);
+      ckoRender();
+    }
+  }
+  function ckoCutPhase() {
+    CK.busy = true; CK.sel = null; CK.pick = []; CK.opts = [];
+    if (CK.g.phase === 'cut') ckCutPhase();
+    else if (CK.g.phase === 'play') ckNext();
+    else ckRender();
+  }
+
+  function ckoJoined(m) {
+    net.code = m.code; net.token = m.token; net.ice = m.ice; net.needResume = false; net.leaving = false;
+    saveSession();
+    var watcher = m.role === 'watcher';
+    joinAuto = null; closeOverlay('#joining');
+    try { var wantHash = '#' + m.code + (watcher ? '/watch' : ''); if (location.hash !== wantHash) history.replaceState(null, '', wantHash); } catch (e) {}
+    clearTimeout(timer); token++; thinking = false; busy = false; moveQ = [];
+    G = {
+      online: true, kind: 'ck', role: watcher ? 'watcher' : 'player', myId: m.id, host: !!m.host, hostId: null, crowd: m.crowd || [], clock: null,
+      cfg: { mode: 'online', level: 'medium', first: 'me' }, code: m.code, mySide: 0, n: m.n, target: m.target, names: { 1: null, '-1': null }, peer: false,
+      board: new Int8Array(64), turn: 1, over: null, log: [], last: null, moves: [], hist: [], pending: false, drawOffered: false, drawSent: false, rematchPeer: false
+    };
+    var oldTok = CK ? CK.token : 0;
+    CK = { online: true, n: m.n, target: m.target, token: oldTok + 1, watch: watcher, mySeat: watcher ? 0 : m.seat, names: [], people: [], g: null, sel: null, opts: [], pick: [],
+      busy: true, msg: '', last: null, show: null, quit: null, q: [], anim: false, ready: (m.view && m.view.ready) || [], level: 'normal', waiting: false };
+    CK.g = ckoBuild(m.view);
+    closeOverlay('#online'); closeOverlay('#victory'); closeOverlay('#ck-cut'); closeOverlay('#ck-deal'); setBusyOnline(false);
+    ckoMount();
+    show('game');
+    ckoSyncPeople();
+    ckoRender();
+    if (m.view) {
+      if (m.view.phase === 'cut') ckCutPhase();
+      else if (m.view.phase === 'play') ckNext();
+      else if (m.view.phase === 'scored') { CK.msg = 'Deal finished.'; ckShowDeal(null); }
+    }
+    voiceSync();
+    chatReset(m.chat || []);
+  }
+  function ckoCrowd() {
+    ckoRender();
+    if (CK && CK.online && CK.g && CK.g.phase === 'scored' && !$('#ck-deal').hidden) ckoReadyNote();
+    voiceSync();
+  }
 
   /* the home screen: pick the game, each game has its own menu */
   function setGame(which) {
@@ -3150,7 +3600,7 @@ const DAMA_PUZZLES = [
     'Your friend offers a draw.': 'صديقك يعرض التعادل.', 'Accept': 'قبول', 'Decline': 'رفض',
     'Voice call': 'مكالمة صوتية', 'Join voice': 'انضم للصوت', 'Ask to speak': 'اطلب الكلام', 'Tap to hear': 'اضغط للاستماع', 'Leave voice': 'غادر الصوت',
     'Chat': 'الدردشة', 'Send': 'إرسال', 'Show invite link': 'أظهر رابط الدعوة', 'Hint': 'تلميح', 'Try again': 'حاول مرة أخرى', 'Show answer': 'أظهر الحل',
-    'Next puzzle': 'اللغز التالي', 'All puzzles': 'كل الألغاز', 'Undo move': 'تراجع عن النقلة', 'Restart': 'إعادة', 'Offer draw': 'اعرض التعادل', 'Resign': 'استسلام',
+    'Next puzzle': 'اللغز التالي', 'All puzzles': 'كل الألغاز', 'Last move': 'آخر حركة', 'Undo move': 'تراجع عن النقلة', 'Restart': 'إعادة', 'Offer draw': 'اعرض التعادل', 'Resign': 'استسلام',
     'Main menu': 'القائمة الرئيسية', 'Players agree a draw': 'اتفق اللاعبان على التعادل', 'Moves': 'النقلات', 'Undo': 'تراجع', '← Menu': '← القائمة',
     'Empty': 'فارغ', '1 seated · 1 to go': 'جالس 1 · ينقص 1', '2 seated · ready': 'جالسان · جاهزان', 'Send the code on WhatsApp': 'أرسل الرمز عبر واتساب',
     'Or tell them the code': 'أو أخبرهم بالرمز', 'What can I do?': 'ماذا أفعل؟', 'Invite watchers': 'ادعُ مشاهدين',
