@@ -30,6 +30,7 @@
     'Send the link on WhatsApp. They tap it and they are at the table, with no sign-up. Or give them the code to type under “Have a code?”. Voice and chat start when they arrive.': 'أرسل الرابط عبر واتساب. يضغطون عليه فيصبحون على الطاولة بدون تسجيل. أو أعطهم الرمز ليكتبوه تحت «عندك رمز؟». يبدأ الصوت والدردشة عندما يصلون.',
     'Moroccan 8×8 · no clock': 'مغربية 8×8 · بدون ساعة',
     'Leave the table?': 'مغادرة الطاولة؟', 'Back to the menu?': 'العودة إلى القائمة؟', 'Your friend will see that you left.': 'سيرى صديقك أنك غادرت.', 'The game is over.': 'انتهت اللعبة.', 'The game on this device will be lost.': 'ستضيع اللعبة على هذا الجهاز.', 'Stay': 'ابقَ', 'Leave': 'غادر',
+    'Yallah, your move!': 'يالله، دورك!', 'Good move!': 'نقلة جيدة!', 'Nice capture!': 'أكلة حلوة!', 'Crowned!': 'توَّجت!', 'Oops, my mistake': 'آه، غلطتي', 'Give me a second': 'أمهلني لحظة', 'Good game!': 'لعبة جميلة!', 'Rematch?': 'نعاود؟', 'Chat and reactions': 'الدردشة وردود الفعل', 'Quick messages': 'رسائل سريعة',
     'Chkobba!': 'شكبة!', '7aya!': 'الحاية!', 'Choose a card': 'اختر ورقة',
     'Open a private table and send your friend the link. Tap the microphone to talk while you play. Friends can also watch, and you choose who can talk.': 'افتح طاولة خاصة وأرسل الرابط لصديقك. اضغط على الميكروفون لتتكلم أثناء اللعب. يمكن للأصدقاء أيضًا المشاهدة، وأنت تختار من يتكلم.',
     'Your name': 'اسمك', 'Game clock (for a table you create)': 'ساعة اللعب (للطاولة التي تنشئها)', 'No clock': 'بدون ساعة', '3 minutes each': '3 دقائق لكل لاعب',

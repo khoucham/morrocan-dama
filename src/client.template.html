@@ -222,6 +222,9 @@
   .reacts { display: flex; gap: 6px; justify-content: space-between; }
   .reacts button { flex: 1 1 0; font-size: 22px; line-height: 1; padding: 7px 0; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; transition: transform .1s; }
   .reacts button:active { transform: scale(.88); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { font: inherit; font-size: 14px; border: 1px solid var(--gold); color: var(--fg); background: var(--field); border-radius: 99px; padding: 7px 13px; cursor: pointer; }
+  .chips button:active { transform: scale(.95); background: var(--panel); }
   .chatform { display: flex; gap: 8px; }
   .chatform .field { flex: 1 1 auto; min-width: 0; }
   .floats { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 8; border-radius: 8px; }
@@ -281,9 +284,14 @@
       position: fixed; left: 0; right: 0; bottom: calc(var(--dockh, 66px) + env(safe-area-inset-bottom, 0px)); z-index: 40; max-height: calc(var(--vvh, 100dvh) - var(--dockh, 66px) - 70px); overflow-y: auto;
       border-radius: 18px 18px 0 0; background: var(--panel); border: 1px solid var(--line); border-bottom: 0; padding: 16px; box-shadow: 0 -10px 30px rgba(0, 0, 0, .35); }
     #game[data-tab="more"] #more-box { display: flex !important; flex-direction: column; gap: 14px; }
-    #chat-form, #chat-box > .call-head { display: none; }
+    #chat-box > .call-head { display: none; }
     .chatlog { max-height: 34dvh; min-height: 90px; }
     .reacts button { font-size: 26px; padding: 9px 0; }
+    .dk-chat-first { order: -1; }
+    #game[data-tab="chat"] .sheet-bg { background: transparent; }
+    #game[data-tab="chat"] #chat-box { left: 12px !important; right: 12px !important; bottom: calc(var(--dockh, 66px) + 6px + env(safe-area-inset-bottom, 0px)) !important; border-radius: 20px !important; border-bottom: 1px solid var(--line) !important; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 34px rgba(0, 0, 0, .5) !important; }
+    #game[data-tab="chat"] .chatlog { max-height: 18dvh; min-height: 0; }
+    #game[data-tab="chat"] .chatlog:empty { display: none; }
     .call { position: static; box-shadow: none; }
     .chat-toast:not([hidden]) { display: block; position: fixed; left: 12px; right: 12px; bottom: calc(var(--dockh, 66px) + 8px + env(safe-area-inset-bottom, 0px)); z-index: 35; background: rgba(20, 24, 56, .94); color: #fff; border-radius: 14px; padding: 9px 14px; font-size: 14px; overflow-wrap: anywhere; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
     .chat-toast b { color: var(--gold-bright); }
@@ -699,6 +707,7 @@
           <div class="call-head"><h2 class="cap" style="margin:0">Chat</h2></div>
           <ol class="chatlog" id="chat-log" aria-live="polite"></ol>
           <div class="reacts" id="reacts" role="group" aria-label="Quick reactions"></div>
+          <div class="chips" id="chips" role="group" aria-label="Quick messages"></div>
           <form class="chatform" id="chat-form" autocomplete="off">
             <input class="field" id="chat-in" maxlength="200" placeholder="Say something…" aria-label="Chat message" enterkeyhint="send">
             <button class="btn small primary" id="chat-send" type="submit">Send</button>
@@ -740,12 +749,7 @@
       <button class="dk pill" id="dk-undo" type="button" hidden>Undo</button>
       <button class="dk round" id="dk-mic" type="button" aria-label="Microphone" hidden></button>
       <button class="dk round" id="dk-people" type="button" aria-label="Who is at the table" hidden>👥<b id="dk-count"></b></button>
-      <form class="dk-form" id="dk-form" autocomplete="off" hidden>
-        <input id="dk-in" maxlength="200" placeholder="Message…" aria-label="Chat message" enterkeyhint="send">
-        <button type="submit" class="dk-send" aria-label="Send">↑</button>
-        <i class="unread" id="dk-unread" hidden></i>
-      </form>
-      <button class="dk round" id="dk-react" type="button" aria-label="Reactions" hidden>😀</button>
+      <button class="dk round" id="dk-chat" type="button" aria-label="Chat and reactions" hidden>💬<i class="unread" id="dk-unread" hidden></i></button>
       <button class="dk round more" id="dk-more" type="button" aria-label="Menu">⋯</button>
     </nav>
   </section>
@@ -1891,7 +1895,7 @@
     pr.timer = setInterval(function () {
       if (voice.peers[id] !== pr || pc.connectionState === 'connected' || ++tries > 3) { clearInterval(pr.timer); return; }
       if (!pr.polite && pc.remoteDescription) { try { pc.restartIce(); } catch (e) {} }
-    }, 15000);
+    }, 25000);
     pc.oniceconnectionstatechange = function () { if (voice.peers[id] === pr) renderVoice(); };
     pc.onconnectionstatechange = function () {
       if (voice.peers[id] !== pr) return;
@@ -1936,12 +1940,17 @@
       pr.ignore = !pr.polite && collision;
       if (pr.ignore) return;
       return Promise.resolve(pc.setRemoteDescription(desc)).then(function () {
+        var held = pr.held || []; pr.held = [];   // candidates that arrived before the description: add them now
+        return Promise.all(held.map(function (c) { return Promise.resolve(pc.addIceCandidate(c)).catch(function () {}); }));
+      }).then(function () {
         if (desc.type === 'offer') return pc.setLocalDescription().then(function () { if (voice.peers[from] === pr) sig(from, { description: pc.localDescription }); });
       });
     }
     if (d.candidate) {
       if (pr.ignore) return;                      // belongs to an offer we chose to ignore
-      return Promise.resolve(pc.addIceCandidate(d.candidate)).catch(function () {});
+      pr.got = (pr.got || 0) + 1;
+      if (!pc.remoteDescription) { (pr.held = pr.held || []).push(d.candidate); return; }
+      return Promise.resolve(pc.addIceCandidate(d.candidate)).catch(function () { pr.bad = (pr.bad || 0) + 1; });
     }
   }
 
@@ -2081,7 +2090,7 @@
     else if (linked === others.length) { dot += ' on'; txt = '<b>Connected.</b> ' + (sm ? 'You joined muted. Tap the hand to ask to speak.' : !voice.on ? 'Tap the microphone so they can hear you.' : voice.muted ? 'Your mic is muted.' : 'Your mic is live.'); }
     else txt = 'Connecting… ' + (voice.on ? 'Your mic is ready.' : 'Tap the microphone when you are ready.');
     dockSync();
-    var det = others.map(function (e) { var pr = voice.peers[e.id]; return pr ? esc(e.name) + ': ' + esc(pr.pc.iceConnectionState) + (pr.types ? ' (routes: ' + Object.keys(pr.types).join('/') + ')' : '') : ''; }).filter(Boolean).join(' · ');
+    var det = others.map(function (e) { var pr = voice.peers[e.id]; return pr ? esc(e.name) + ': ' + esc(pr.pc.iceConnectionState) + (pr.types ? ' (routes: ' + Object.keys(pr.types).join('/') + ' · received ' + (pr.got || 0) + (pr.bad ? ', ' + pr.bad + ' refused' : '') + ')' : '') : ''; }).filter(Boolean).join(' · ');
     $('#vc-stat').innerHTML = '<span class="' + dot + '"></span>' + txt + (voice.error ? '<br><b>' + esc(voice.error) + '</b>' : '') + (det ? '<br><small>Link: ' + det + '</small>' : '');
   }
 
@@ -2251,13 +2260,20 @@
   $('#reacts').innerHTML = REACTS.map(function (e) { return '<button type="button" data-e="' + e + '" aria-label="React ' + e + '">' + e + '</button>'; }).join('');
   $('#reacts').addEventListener('click', function (e) {
     var b = e.target.closest('[data-e]');
-    if (b && online()) netSend({ t: 'react', emoji: b.getAttribute('data-e') });
+    if (b && online()) { netSend({ t: 'react', emoji: b.getAttribute('data-e') }); if (phoneMQ.matches && dockTab === 'chat') dockClose(); }
+  });
+  var CHIPS = ['Yallah, your move!', 'Good move!', 'Nice capture!', 'Crowned!', 'Oops, my mistake', 'Give me a second', 'Good game!', 'Rematch?'];
+  $('#chips').innerHTML = CHIPS.map(function (t) { return '<button type="button" data-t="' + t + '">' + t + '</button>'; }).join('');
+  $('#chips').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-t]');
+    if (b && online()) { netSend({ t: 'chat', text: b.getAttribute('data-t') }); if (phoneMQ.matches && dockTab === 'chat') dockClose(); }
   });
   $('#chat-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var inp = $('#chat-in'), text = inp.value.trim();
     if (!text || !online()) return;
     netSend({ t: 'chat', text: text }); inp.value = '';
+    if (phoneMQ.matches && dockTab === 'chat') dockClose();
   });
   document.querySelectorAll('.snd-toggle').forEach(function (b) { b.addEventListener('click', function () { sfx.toggle(); }); });
   sfx.labels();
@@ -2301,18 +2317,16 @@
     var g = $('#game');
     if (dockTab) g.setAttribute('data-tab', dockTab); else g.removeAttribute('data-tab');
     $('#sheet-bg').hidden = !dockTab;
-    $('#react-pop').hidden = true;
     $('#dk-people').classList.toggle('on', dockTab === 'voice');
     $('#dk-more').classList.toggle('on', dockTab === 'more');
     if (dockTab === 'chat') { $('#dk-unread').hidden = true; var lg = $('#chat-log'); lg.scrollTop = lg.scrollHeight; }
     if (dockTab) $('#chat-toast').hidden = true;
   }
-  function dockClose() { if (dockTab) dockSet(dockTab); $('#react-pop').hidden = true; }
+  function dockClose() { if (dockTab) dockSet(dockTab); }
   function dockSync() {
     if (!G) return;
     var on = online();
-    ['#dk-mic', '#dk-people', '#dk-react'].forEach(function (id) { $(id).hidden = !on; });
-    $('#dk-form').hidden = !on;
+    ['#dk-mic', '#dk-people', '#dk-chat'].forEach(function (id) { $(id).hidden = !on; });
     var pzOn = !!G.puzzle;
     $('#dk-hint').hidden = on; $('#dk-undo').hidden = on || pzOn;
     $('#dk-hint').disabled = pzOn ? $('#pz-hint').disabled : $('#hint').disabled;
@@ -2336,14 +2350,8 @@
     $('#dk-unread').hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 4500);
   }
-  $('#react-pop').innerHTML = REACTS.map(function (e) { return '<button type="button" data-e="' + e + '" aria-label="React ' + e + '">' + e + '</button>'; }).join('');
-  $('#react-pop').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-e]');
-    if (b && online()) netSend({ t: 'react', emoji: b.getAttribute('data-e') });
-    $('#react-pop').hidden = true;
-  });
-  $('#dk-react').addEventListener('click', function () { var open = !$('#react-pop').hidden; dockClose(); $('#react-pop').hidden = open; });
-  $('#dk-people').addEventListener('click', function () { $('#react-pop').hidden = true; dockSet('voice'); });
+  $('#dk-chat').addEventListener('click', function () { dockSet('chat'); });
+  $('#dk-people').addEventListener('click', function () { dockSet('voice'); });
   $('#dk-hint').addEventListener('click', function () { $(G.puzzle ? '#pz-hint' : '#hint').click(); });
   $('#dk-undo').addEventListener('click', function () { $('#undo').click(); });
   $('#dk-more').addEventListener('click', function () { dockSet('more'); });
@@ -2352,14 +2360,7 @@
   $('#chat-toast').addEventListener('click', function () { dockSet('chat'); });
   $('#dk-mic').addEventListener('click', function () {
     if (voice.on && !serverMuted()) $('#vc-mic').click();       // already in the call: quick mute / unmute
-    else { $('#react-pop').hidden = true; if (dockTab !== 'voice') dockSet('voice'); if (!voice.on && !serverMuted()) $('#vc-mic').click(); }
-  });
-  $('#dk-in').addEventListener('focus', function () { if (dockTab !== 'chat') dockSet('chat'); });
-  $('#dk-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-    var inp = $('#dk-in'), text = inp.value.trim();
-    if (!text || !online()) return;
-    netSend({ t: 'chat', text: text }); inp.value = '';
+    else { if (dockTab !== 'voice') dockSet('voice'); if (!voice.on && !serverMuted()) $('#vc-mic').click(); }
   });
   ['#to-menu', '#restart', '#undo', '#g-rules', '#hint', '#pz-list'].forEach(function (id) { $(id).addEventListener('click', function () { if (dockTab === 'more') dockClose(); }); });
   if (window.visualViewport) {
