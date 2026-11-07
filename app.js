@@ -13,6 +13,8 @@ const { EventEmitter } = require('events');
 const { WebSocketServer } = require('ws');
 const E = require('./src/engine.js');
 const CKE = require('./src/chkobba.js');
+const RND = require('./src/ronda.js');
+const engOf = room => (room.game === 'ronda' ? RND : CKE);
 
 const INDEX = path.join(__dirname, 'public', 'index.html');
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O/1/I
@@ -133,7 +135,7 @@ function start(port, host, opts) {
       if (url === '/send' && req.method === 'POST') return receiveSse(req, res, sid);
       res.writeHead(405); return res.end();
     }
-    const cm = /^\/cards\/([KQJ]-[dhsc])\.(png|webp|jpg)$/.exec(url);
+    const cm = /^\/cards\/([KQJ]-[dhsc]|S-[0-3][0-9])\.(png|webp|jpg)$/.exec(url);
     if (cm && req.method === 'GET') {
       return fs.readFile(path.join(__dirname, 'public', 'cards', cm[1] + '.' + cm[2]), (err, data) => {
         if (err) { res.writeHead(404); return res.end(); }
@@ -166,6 +168,13 @@ function start(port, host, opts) {
           'X-Content-Type-Options': 'nosniff',
           'Permissions-Policy': 'microphone=(self)'
         });
+        // the link preview (WhatsApp etc.) names the game: invite links for Chkobba carry ?g=chkobba
+        const gq = u.searchParams.get('g');
+        if (gq === 'chkobba' || gq === 'ronda') {
+          const gn = gq === 'ronda' ? 'Ronda' : 'Chkobba';
+          const t = gn + ' - join my table';
+          data = Buffer.from(data.toString('utf8').replace('<title>Moroccan Dama</title>', '<title>' + t + '</title>\n<meta property="og:title" content="' + t + '">\n<meta property="og:description" content="' + (gq === 'ronda' ? 'Moroccan Ronda' : 'Tunisian Chkobba') + ' with voice and chat. Tap to sit at my table.">'));
+        }
         res.end(data);
       });
       return;
@@ -523,7 +532,7 @@ function start(port, host, opts) {
   function ckStats(g) {
     return [0, 1].map(q => {
       const pl = g.piles[q] || [];
-      return { cards: pl.length, coins: pl.filter(c => CKE.suit(c) === 0).length, sevens: pl.filter(c => CKE.rank(c) === 7).length,
+      return { pts: g.dealPts ? g.dealPts[q] : 0, cards: pl.length, coins: pl.filter(c => CKE.suit(c) === 0).length, sevens: pl.filter(c => CKE.rank(c) === 7).length,
         sixes: pl.filter(c => CKE.rank(c) === 6).length, haya: pl.indexOf(CKE.HAYA) >= 0 };
     });
   }
@@ -535,14 +544,14 @@ function start(port, host, opts) {
       scores: g.scores.slice(0, 2), over: g.over, winner: g.winner, deck: g.deck.length, table: g.table.slice(),
       handN: g.hands.map(h => h.length), hand: seat >= 0 ? g.hands[seat].slice() : [],
       cutCard: (seat >= 0 && seat === g.cutter && g.phase === 'cut') ? g.cutCard : null,
-      stats: ckStats(g), chk: g.chk.slice(0, 2), deals: g.deals, ready: [...room.ready]
+      stats: ckStats(g), chk: g.chk.slice(0, 2), deals: g.deals, ready: [...room.ready], game: room.game || 'chkobba', ann: g.ann || null, turnSec: room.turnSec || 0, tl: room.deadline ? Math.max(0, room.deadline - Date.now()) : null
     };
   }
   function ckSnapshot(room, seat, who, reason) {
     return {
       t: 'ckjoined', reason, code: room.code, seat, token: who.token, id: who.id,
       role: seat >= 0 ? 'player' : 'watcher', host: seat >= 0 && room.hostId === who.id, crowd: crowd(room), chat: room.chat,
-      n: room.n, target: room.target, ice: iceConfig(), view: ckView(room, seat), log: room.log, ev: null
+      n: room.n, target: room.target, game: room.game || 'chkobba', turnSec: room.turnSec || 0, ice: iceConfig(), view: ckView(room, seat), log: room.log, ev: null
     };
   }
   function ckSendViews(room, make) {
@@ -557,10 +566,11 @@ function start(port, host, opts) {
   }
   function ckCreate(ws, m) {
     if (ws.room) return fail(ws, 'You are already at a table.');
-    const n = Number(m.n) === 4 ? 4 : 2, target = Number(m.target) === 21 ? 21 : 11;
+    const n = Number(m.n) === 4 ? 4 : 2, ronda = m.game === 'ronda';
+    const target = ronda ? (Number(m.target) === 25 ? 25 : 41) : (Number(m.target) === 21 ? 21 : 11);
     const code = newCode();
     const room = {
-      kind: 'ck', code, createdAt: Date.now(), lastActive: Date.now(), n, target, seats: new Array(n).fill(null), p: {},
+      kind: 'ck', game: ronda ? 'ronda' : 'chkobba', turnSec: [30, 60].includes(Number(m.turn)) ? Number(m.turn) : 0, tt: null, deadline: null, code, createdAt: Date.now(), lastActive: Date.now(), n, target, seats: new Array(n).fill(null), p: {},
       g: null, ready: new Set(), log: [], w: new Map(), hostId: null, chat: [], clock: null
     };
     room.seats[0] = { id: newId(), name: cleanName(m.name, 'Player 1'), token: crypto.randomBytes(16).toString('hex'), ws: null };
@@ -576,17 +586,19 @@ function start(port, host, opts) {
     room.seats[seat] = { id: newId(), name: cleanName(m.name, 'Player ' + (seat + 1)), token: crypto.randomBytes(16).toString('hex'), ws: null };
     if (!room.hostId || !room.seats.some(p => p && p.id === room.hostId)) room.hostId = room.seats[seat].id;
     ckAttach(room, seat, ws);
+    if (room.g && ckSeated(room)) ckArm(room);
     send(ws, ckSnapshot(room, seat, room.seats[seat], 'join'));
     sendCrowd(room);
     ckMaybeStart(room);
   }
   function ckNewGame(room) {
-    room.g = CKE.newGame(room.n, room.target, Math.random, crypto.randomInt(room.n));
+    room.g = engOf(room).newGame(room.n, room.target, Math.random, crypto.randomInt(room.n));
     room.ready = new Set(); room.log = [];
   }
   function ckMaybeStart(room) {
     if (room.g || !room.seats.every(Boolean)) return;
     ckNewGame(room);
+    ckArm(room);
     ckSendViews(room, seat => ({ t: 'ckstate', reason: 'start', view: ckView(room, seat) }));
   }
   function ckSeated(room) { return room.seats.every(Boolean); }
@@ -598,6 +610,7 @@ function start(port, host, opts) {
     const keep = !!m.keep;
     CKE.cutDecision(g, keep);
     room.lastActive = Date.now();
+    ckArm(room);
     const ev = { k: 'cut', seat: ws.side, keep, tableN: g.table.length };
     ckSendViews(room, seat => ({ t: 'ckmoved', ev, view: ckView(room, seat) }));
   }
@@ -609,14 +622,46 @@ function start(port, host, opts) {
     if (g.phase !== 'play' || g.turn !== seat) return fail(ws, 'It is not your turn.', 'illegal');
     const card = Number(m.card), take = Array.isArray(m.take) ? m.take.map(Number) : [];
     if (!Number.isInteger(card) || take.length > 10 || take.some(x => !Number.isInteger(x))) return fail(ws, 'Illegal move.', 'illegal');
+    if (!ckDoPlay(room, seat, card, take)) return fail(ws, 'Illegal move.', 'illegal');
+  }
+  function ckDoPlay(room, seat, card, take) {
+    const g = room.g;
     let r;
-    try { r = CKE.play(g, seat, card, take); } catch (e) { return fail(ws, 'Illegal move.', 'illegal'); }
+    try { r = engOf(room).play(g, seat, card, take); } catch (e) { return false; }
     room.lastActive = Date.now();
-    const ev = { k: 'play', seat, card, took: r.took, chk: r.chkobba, more: r.dealtMore, ended: r.ended, score: r.score || null };
+    const ev = { k: 'play', seat, card, took: r.took, chk: r.chkobba, more: r.dealtMore, ended: r.ended, score: r.score || null, flash: r.flash || '', ann: r.ann || null, events: r.events || [] };
     room.log.push({ side: seat, text: card + (r.took.length ? '>' + r.took.join(',') : '') });
     if (room.log.length > 200) room.log.shift();
     if (r.ended) room.ready = new Set();
+    ckArm(room);
     ckSendViews(room, s => ({ t: 'ckmoved', ev, view: ckView(room, s) }));
+    return true;
+  }
+  /* optional turn timer: when it runs out the server plays for the person who is away (a capture if there is one, otherwise a random card) */
+  function ckArm(room) {
+    clearTimeout(room.tt); room.tt = null; room.deadline = null;
+    const g = room.g;
+    if (!room.turnSec || !g || !ckSeated(room) || (g.phase !== 'play' && g.phase !== 'cut')) return;
+    room.deadline = Date.now() + room.turnSec * 1000;
+    room.tt = setTimeout(() => ckAuto(room), room.turnSec * 1000 + 100);
+    if (room.tt.unref) room.tt.unref();
+  }
+  function ckAuto(room) {
+    const g = room.g;
+    if (!g || !rooms.has(room.code) || !ckSeated(room)) return;
+    if (g.phase === 'cut') {
+      const keep = Math.random() < 0.5;
+      engOf(room).cutDecision(g, keep);
+      const ev = { k: 'cut', seat: g.cutter, keep, tableN: g.table.length };
+      ckArm(room);
+      return ckSendViews(room, seat => ({ t: 'ckmoved', ev, view: ckView(room, seat) }));
+    }
+    if (g.phase !== 'play') return;
+    const seat = g.turn, hand = g.hands[seat], eng = engOf(room);
+    let pick = null;
+    for (const c of hand) { const o = eng.captures(g.table, c); if (o.length) { pick = { card: c, take: o[0] }; break; } }
+    if (!pick) pick = { card: hand[Math.floor(Math.random() * hand.length)], take: [] };
+    ckDoPlay(room, seat, pick.card, pick.take);
   }
   function ckReady(ws) {
     const room = ws.room;
@@ -624,8 +669,8 @@ function start(port, host, opts) {
     room.ready.add(ws.side);
     const need = room.seats.map((p, i) => (p && live(p) ? i : -1)).filter(i => i >= 0);
     if (need.every(i => room.ready.has(i))) {
-      if (room.g.over) ckNewGame(room); else CKE.nextDeal(room.g, Math.random);
-      room.ready = new Set(); room.lastActive = Date.now();
+      if (room.g.over) ckNewGame(room); else engOf(room).nextDeal(room.g, Math.random);
+      room.ready = new Set(); room.lastActive = Date.now(); ckArm(room);
       ckSendViews(room, seat => ({ t: 'ckstate', reason: 'deal', view: ckView(room, seat) }));
     } else ckSendViews(room, seat => ({ t: 'ckready', ready: [...room.ready], view: ckView(room, seat) }));
   }
@@ -651,6 +696,7 @@ function start(port, host, opts) {
     if (!room.seats.some(Boolean)) {
       sendWatchers(room, { t: 'closed' });
       for (const w of room.w.values()) { if (w.ws) { w.ws.room = null; w.ws.role = null; } }
+      clearTimeout(room.tt);
       rooms.delete(room.code);
     } else {
       sendCrowd(room);

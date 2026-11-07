@@ -622,6 +622,34 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
     [T.cs[0], T.cs[1], nu, c2].forEach(c => c.ws.close());
   });
 
+  await test('Ronda table: no cut, 4 table cards, announcements in the view, caida/missa events, and a turn timer value is sent', async () => {
+    const RND = require('../src/ronda.js');
+    const cs = []; for (let i = 0; i < 2; i++) { const c = client(port); await c.open(); cs.push(c); }
+    cs[0].send({ t: 'ckcreate', name: 'Host', n: 2, target: 25, game: 'ronda', turn: 30 });
+    const s0 = await cs[0].next('ckjoined');
+    assert.strictEqual(s0.game, 'ronda'); assert.strictEqual(s0.target, 25); assert.strictEqual(s0.turnSec, 30);
+    cs[1].send({ t: 'join', code: s0.code, name: 'P2' }); const s1 = await cs[1].next('ckjoined'); assert.strictEqual(s1.game, 'ronda');
+    let views = []; for (const c of cs) views.push((await c.next('ckstate')).view);
+    assert.strictEqual(views[0].phase, 'play'); assert.strictEqual(views[0].table.length, 4); assert.strictEqual(views[0].handN[0], 3);
+    assert(views[0].tl > 25000 && views[0].tl <= 30000, 'the timer is running: ' + views[0].tl);
+    assert.strictEqual(views[0].deck, 40 - 4 - 6);
+    // only the player to move can play; a capture is forced
+    const seat = views[0].turn, wrong = 1 - seat;
+    cs[wrong].send({ t: 'ckplay', card: views[wrong].hand[0], take: [] }); assert.strictEqual((await cs[wrong].next('error')).code, 'illegal');
+    let ended = false;
+    for (let guard = 0; guard < 100 && !ended; guard++) {
+      const st = views[0].turn, mine = views[st];
+      const card = mine.hand[0], o = RND.captures(mine.table, card);
+      cs[st].send({ t: 'ckplay', card, take: o.length ? o[0] : [] });
+      const msgs = []; for (const c of cs) msgs.push(await c.next('ckmoved'));
+      views = msgs.map(m => m.view); ended = msgs[0].ev.ended;
+      assert.strictEqual(msgs[0].view.hand.length >= 0, true);
+    }
+    assert(ended && views[0].phase === 'scored');
+    assert.strictEqual(views[0].stats[0].cards + views[0].stats[1].cards, 40, 'every card is in a pile at the end');
+    cs.forEach(c => c.ws.close());
+  });
+
   a.close(); b.close();
   await srv.close();
   console.log('\nALL ' + n + ' SERVER TESTS PASSED');

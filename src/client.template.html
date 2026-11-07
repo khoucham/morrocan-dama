@@ -320,7 +320,9 @@
     #game[data-tab="chat"] .sheet-bg { background: transparent; }
     /* Compact dark glass popup above the bar, like a small floating card */
     #game[data-tab="chat"] #chat-box { left: 12px !important; right: 78px !important; bottom: calc(var(--dockh, 66px) + 8px + env(safe-area-inset-bottom, 0px)) !important; max-width: 430px; border-radius: 18px !important; border: 1px solid rgba(255, 255, 255, .12) !important; padding: 10px !important; display: flex; flex-direction: column; gap: 8px; overflow: hidden; background: rgba(12, 18, 16, .88) !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: #F1ECDD; box-shadow: 0 10px 34px rgba(0, 0, 0, .55) !important; }
-    #game[data-tab="chat"] .chatlog { display: none; }
+    #game[data-tab="chat"] .chatlog { display: flex; max-height: 30dvh; min-height: 0; padding: 2px 4px; border: 0; background: transparent; color: #F1ECDD; font-size: 15px; }
+    #game[data-tab="chat"] .chatlog .empty { color: rgba(241, 236, 221, .55); }
+    #game[data-tab="chat"] .chatlog li b { color: #E6B84F; }
     #game[data-tab="chat"] .reacts { gap: 5px; }
     #game[data-tab="chat"] .reacts button { font-size: 22px; padding: 7px 0; border-radius: 10px; border: 0; background: rgba(255, 255, 255, .07); }
     #game[data-tab="chat"] .chips { gap: 6px; }
@@ -479,8 +481,24 @@
   .pc .cn.ct { top: 4%; left: 8%; }
   .pc .cn.ct u { font-size: 1.3em; margin: 0; }
   .pc .cn.ct.bt { top: auto; left: auto; right: 8%; bottom: 4%; }
-  .pc .court { position: absolute; left: 9%; right: 9%; top: 6%; bottom: 6%; }
+  .pc .court { visibility: hidden; position: absolute; left: 9%; right: 9%; top: 6%; bottom: 6%; }
   .pc .court svg { width: 100%; height: 100%; display: block; }
+  .pc.nocimg .court { visibility: visible; }
+  /* Spanish deck (Ronda) */
+  .pc.spanish { background: #F4E7C4; border-color: #A98C4E; color: #3A2A12; }
+  .pc.spanish .cn b { font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-size: 1em; }
+  .pc.spanish .cn u svg { width: .85em; height: .85em; display: block; }
+  .pc.spanish .pip.sp { font-size: 1em; }
+  .pc.spanish .pip.sp svg { width: calc(var(--cw) * .3); height: calc(var(--cw) * .3); display: block; }
+  .pc.spanish .pip.sp.ace svg { width: calc(var(--cw) * .56); height: calc(var(--cw) * .56); }
+  .pc.spanish .court.sp { visibility: visible; display: flex; flex-direction: column; align-items: center; justify-content: space-between; left: 19%; right: 19%; top: 15%; bottom: 15%; border: 1.500px solid #A98C4E; border-radius: 6px; padding: 5% 4%; background: repeating-linear-gradient(135deg, rgba(169, 140, 78, .14) 0 4px, transparent 4px 8px); }
+  .pc.spanish .court.sp .sfig { width: 60%; height: auto; }
+  .pc.spanish .court.sp .sbig svg { width: calc(var(--cw) * .34); height: calc(var(--cw) * .34); display: block; }
+  .pc.spanish .court.sp em { font-style: normal; font-size: calc(var(--cw) * .1); font-weight: 700; letter-spacing: .02em; color: #6E1810; }
+  .pc.spanish.photo { background: #fff; padding: 0; overflow: hidden; border-color: #8a7a55; }
+  .pc.spanish.photo > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; display: block; }
+  .pc.spanish.mini .court.sp { display: none; }
+  .pc.spanish.mini .cn.bt { display: none; }
   .pc .cimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; z-index: 3; pointer-events: none; }
   .pc.big { --cw: 150px; cursor: default; }
   .pc.mini { --cw: 24px; }
@@ -519,6 +537,7 @@
 
   /* ---------- games hub ---------- */
   #hub { display: flex; flex-direction: column; align-items: center; gap: 22px; padding-top: 18px; }
+  .tiles .tile:nth-child(3) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 8px); }
   .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: min(100%, 560px); }
   .tile { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 12px 16px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; text-align: center;
     box-shadow: 0 10px 26px rgba(10, 16, 60, .14); transition: transform .12s, border-color .12s; }
@@ -571,7 +590,14 @@
   #game[data-kind="ck"] #undo, #game[data-kind="ck"] #restart, #game[data-kind="ck"] #odraw, #game[data-kind="ck"] #resign, #game[data-kind="ck"] #draw,
   #game[data-kind="ck"] #offer, #game[data-kind="ck"] #status { display: none !important; }
   #game[data-kind="ck"] #sh-seats { display: none; }
-  #game[data-kind="ck"] .ck-play { --cw: clamp(46px, min(19vw, 10.2vh), 84px); }
+  #game[data-kind="ck"] .ck-play { --cw: clamp(54px, min(23vw, 11.5vh), 96px); }
+  #game[data-kind="ck"] .ck-table .pc { --cw: clamp(54px, min(19vw, 10.5vh), 88px); }
+  #game[data-kind="ck"] .seat .fan .pc { --cw: 34px; }
+  @media (max-width: 860px) {
+    #game[data-kind="ck"] .rail { flex-direction: row; gap: 5px; }
+    #game[data-kind="ck"] .rail > * { width: 38px; height: 38px; }
+    #game[data-kind="ck"] .toprow { align-items: center; }
+  }
   #game[data-kind="ck"] .ck-score { justify-content: flex-start; gap: 8px; font-size: 12px; }
   #game[data-kind="ck"] .ck-score b { font-size: 20px; margin-right: 3px; }
   #game[data-kind="ck"] .ck-score .deck { flex-basis: auto; font-size: 12px; }
@@ -579,6 +605,7 @@
   .seat .sav { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: 15px; flex: none;
     background: linear-gradient(145deg, hsl(var(--hue) 70% 64%), hsl(var(--hue) 60% 38%)); box-shadow: 0 0 0 2px var(--panel), 0 0 0 3.500px var(--gold-bright); transition: box-shadow .12s; }
   .seat.speaking .sav { box-shadow: 0 0 0 2px var(--panel), 0 0 0 5px var(--win); }
+  #game[data-kind="ck"] .ck-piles .pl { flex-wrap: wrap; justify-content: center; font-size: 12px; min-width: 0; row-gap: 0; }
   .seat.off { opacity: .55; }
   .seat.me { flex: none; justify-content: flex-start; }
   .seat.me[hidden] { display: none; }
@@ -586,6 +613,8 @@
   .seat.left .nm, .seat.right .nm { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
   .ck-act { display: flex; gap: 8px; align-items: center; }
   .ck-act .btn { flex: 1 1 auto; width: auto; min-width: 0; }
+  .ck-timer { margin: 0; text-align: center; font-weight: 700; font-size: 15px; color: var(--gold-bright); }
+  .ck-timer.low { color: #ff7b6b; }
   .ck-ready { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
   .wr-seats[hidden] { display: none; }
   .wr-seats.four { gap: 12px; flex-wrap: wrap; }
@@ -646,6 +675,15 @@
         </svg>
         <span class="t-name">Chkobba</span><span class="t-ar" lang="ar" dir="rtl">الشكبة</span>
         <span class="t-sub">Tunisian cards. 2 or 4 players.</span>
+      </button>
+      <button class="tile" id="tile-ro" type="button" aria-label="Ronda">
+        <svg viewBox="0 0 96 96" aria-hidden="true">
+          <rect x="4" y="4" width="88" height="88" rx="10" fill="#7A1F2B"/><rect x="4" y="4" width="88" height="88" rx="10" fill="none" stroke="#E6B84F" stroke-width="2.500"/>
+          <g transform="rotate(-16 36 56)"><rect x="16" y="20" width="38" height="56" rx="4" fill="#F7EDD6" stroke="#BDAA82"/><text x="22" y="35" font-family="Georgia,serif" font-weight="700" font-size="13" fill="#C8281E">5</text><text x="35" y="58" font-size="22" text-anchor="middle" fill="#C8281E">♥</text></g>
+          <g transform="rotate(14 60 56)"><rect x="42" y="18" width="38" height="56" rx="4" fill="#F7EDD6" stroke="#BDAA82"/><text x="48" y="33" font-family="Georgia,serif" font-weight="700" font-size="13" fill="#C8281E">5</text><text x="61" y="56" font-size="22" text-anchor="middle" fill="#C8281E">♦</text></g>
+        </svg>
+        <span class="t-name">Ronda</span><span class="t-ar" lang="ar" dir="rtl">الروندا</span>
+        <span class="t-sub">Moroccan cards. 2 or 4 players.</span>
       </button>
     </div>
       <div class="install" id="install-box" hidden>
@@ -880,6 +918,7 @@
         <div class="ck-info">
           <div class="ck-last" id="ck-last"></div>
           <p class="ck-status" id="ck-status" role="status" aria-live="polite"></p>
+          <p class="ck-timer" id="ck-timer" hidden></p>
         </div>
         <div class="ck-hand" id="ck-hand" aria-label="Your cards"></div>
         <div class="ck-act"><span class="seat me" id="ck-me" hidden></span><button class="btn big" id="ck-act" type="button" disabled>Choose a card</button></div>
@@ -905,6 +944,14 @@
         <option value="3">3 minutes each</option>
         <option value="5">5 minutes each</option>
         <option value="10">10 minutes each</option>
+      </select>
+    </div>
+    <div id="turn-wrap" hidden>
+      <label class="cap" for="turn-sel">Turn timer (for a table you create)</label>
+      <select class="field" id="turn-sel">
+        <option value="0">No timer</option>
+        <option value="30">30 seconds a turn</option>
+        <option value="60">60 seconds a turn</option>
       </select>
     </div>
     <div class="row"><button class="btn primary big" id="create" type="button">Create table</button></div>
@@ -976,6 +1023,22 @@
     <div class="row"><button class="btn" id="leave-stay" type="button">Stay</button><button class="btn primary" id="leave-go" type="button">Leave</button></div>
   </div>
 </div>
+<div class="overlay" id="ro-rules" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ro-rules-t">
+    <h2 id="ro-rules-t">How Ronda is played</h2>
+    <p class="lead">40 cards: Ace to 7, then Queen, Jack, King (the 7 is followed by the Queen). 2 players, or 4 in two teams.</p>
+    <ul>
+      <li><b>The deal.</b> 3 cards each and 4 on the table. When everyone has played their 3, you get 3 more (nothing is added to the table).</li>
+      <li><b>Your turn.</b> Play one card. If a card of the same value is on the table you must take it, and also the cards above it in an unbroken run (a 5 takes 5, 6, 7 if all are there). Otherwise the card stays on the table.</li>
+      <li><b>Ronda and Tringa.</b> After each deal, a pair in a hand is a Ronda (1 point) and three alike a Tringa (5 points). The side with the best one scores all of them. It is announced for you.</li>
+      <li><b>Caida.</b> Take the card the other side has just left, with the same card: 1 point.</li>
+      <li><b>Missa.</b> Clear the table: 1 point (not with the very last card).</li>
+      <li><b>End of the deal.</b> The last player to take cards takes what is left. Then the side with more than 20 cards scores one point for every card above 20.</li>
+      <li><b>Winning.</b> First to 41 points (or 25) wins, even in the middle of a deal.</li>
+    </ul>
+    <div class="row"><button class="btn primary" id="ro-rules-close" type="button">Got it</button></div>
+  </div>
+</div>
 <div class="overlay" id="ck-rules" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ck-rules-t">
     <h2 id="ck-rules-t">How Chkobba is played</h2>
@@ -1037,6 +1100,7 @@
 </script>
 <script>
 /*CHKOBBA*/
+/*RONDA*/
 </script>
 <script>
 /*PUZZLES*/
@@ -1142,10 +1206,10 @@
 
   /* ---------- hint (against the computer or two players on one device) ---------- */
   function showHint(quiet) {
-    if (!G || online() || G.puzzle || !humanTurn() || thinking || busy) return;
+    if (!G || (online() && quiet !== true) || G.puzzle || !humanTurn() || thinking || busy) return;   // online: only the secret taps, never a button
     if (quiet !== true) note('Looking for a good move…');
     setTimeout(function () {
-      if (!G || online() || G.puzzle) return;
+      if (!G || (online() && quiet !== true) || G.puzzle) return;
       var mv = AI.chooseMove(G.board, G.turn, { depth: 12, rand: 0, time: 900 });
       if (!mv) return;
       G.hint = { from: mv.from, to: mv.path[0] }; ui = { sel: null, prefix: [] };
@@ -1972,7 +2036,7 @@
     try { localStorage.setItem('dama-clock', String(clockMin)); } catch (e) {}
     if (kind === 'create' && onKind === 'ck') {
       var cn = document.querySelector('input[name="ckn"]:checked'), ct = document.querySelector('input[name="ckt"]:checked');
-      netSend({ t: 'ckcreate', name: nick || 'Player', n: cn ? +cn.value : 2, target: ct ? +ct.value : 11 });
+      netSend({ t: 'ckcreate', name: nick || 'Player', n: cn ? +cn.value : 2, target: ct ? +ct.value : 11, game: CKG, turn: +$('#turn-sel').value || 0 });
     } else if (kind === 'create') netSend({ t: 'create', name: nick || 'Player', clock: clockMin });
     else if (kind === 'watch') netSend({ t: 'watch', code: code, name: nick || 'Guest' });
     else netSend({ t: 'join', code: code, name: nick || 'Guest' });
@@ -2313,11 +2377,11 @@
   var onKind = 'dama';
   function openOnline(prefillCode, kind) {
     onKind = kind === 'ck' ? 'ck' : 'dama';
-    $('#clock-wrap').hidden = onKind === 'ck';
+    $('#clock-wrap').hidden = onKind === 'ck'; $('#turn-wrap').hidden = onKind !== 'ck';
     var cs = $('#on-ck-sum'); cs.hidden = onKind !== 'ck';
     if (onKind === 'ck') {
       var cn = document.querySelector('input[name="ckn"]:checked'), ct = document.querySelector('input[name="ckt"]:checked');
-      cs.textContent = 'Chkobba table · ' + ((cn && cn.value === '4') ? '4 players in two teams' : '2 players') + ' · first to ' + (ct ? ct.value : '11') + '. Change this on the previous screen.';
+      cs.textContent = gameTitle() + ' table · ' + ((cn && cn.value === '4') ? '4 players in two teams' : '2 players') + ' · first to ' + (ct ? ct.value : '11') + '. Change this on the previous screen.';
     }
     try { $('#nick').value = localStorage.getItem('dama-nick') || ''; $('#clock-sel').value = localStorage.getItem('dama-clock') || '0'; } catch (e) {}
     $('#code').value = prefillCode || '';
@@ -2339,7 +2403,7 @@
   }
   $('#to-menu').addEventListener('click', askLeave);
   $('#rl-exit').addEventListener('click', askLeave);
-  $('#rl-rules').addEventListener('click', function () { openOverlay(G && G.kind === 'ck' ? '#ck-rules' : '#rules'); });
+  $('#rl-rules').addEventListener('click', function () { openOverlay(G && G.kind === 'ck' ? (CKG === 'ronda' ? '#ro-rules' : '#ck-rules') : '#rules'); });
   $('#rl-snd').addEventListener('click', function () { sfx.toggle(); this.classList.toggle('off', !sfx.isOn()); });
   $('#rl-eye').addEventListener('click', function () { $('#dk-people').click(); });
   $('#moves-pill').addEventListener('click', function () {
@@ -2354,7 +2418,7 @@
     clearTimeout(timer); token++; thinking = false; busy = false; closeOverlay('#victory'); show('menu');
   });
   $('#menu-rules').addEventListener('click', function () { openOverlay('#rules'); });
-  $('#g-rules').addEventListener('click', function () { openOverlay(G && G.kind === 'ck' ? '#ck-rules' : '#rules'); });
+  $('#g-rules').addEventListener('click', function () { openOverlay(G && G.kind === 'ck' ? (CKG === 'ronda' ? '#ro-rules' : '#ck-rules') : '#rules'); });
   $('#rules-close').addEventListener('click', function () { closeOverlay('#rules'); });
   $('#v-again').addEventListener('click', function () {
     if (online()) {
@@ -2399,7 +2463,7 @@
   });
   $('#of-yes').addEventListener('click', function () { G.drawOffered = false; netSend({ t: 'draw', action: 'accept' }); render(); });
   $('#of-no').addEventListener('click', function () { G.drawOffered = false; netSend({ t: 'draw', action: 'decline' }); render(); });
-  function gameName() { return G && G.kind === 'ck' ? 'Chkobba' : 'Moroccan Dama'; }
+  function gameName() { return G && G.kind === 'ck' ? gameTitle() : 'Moroccan Dama'; }
   function copyFrom(id) {
     var inp = $(id), done = function () { note('Link copied.'); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(inp.value).then(done, function () { inp.select(); note('Press copy on your keyboard to copy the link.'); });

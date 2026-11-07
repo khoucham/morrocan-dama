@@ -526,13 +526,14 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
   });
 
   await test('Chkobba: pick the game on the home screen, play whole games against the computer (2 and 4 players)', async () => {
-    for (const players of ['2', '4']) {
+    for (const [players, tile] of [['2', '#tile-ck'], ['4', '#tile-ck'], ['2', '#tile-ro'], ['4', '#tile-ro']]) {
       const K = await open(port);
       K.__ckFast = true;
       assert(visible(K, '#hub') && /Pick a game/.test(txt(K, '#hub h1')));
-      click(K, '#tile-ck');
-      assert(visible(K, '#ck-setup') && !visible(K, '#dama-setup'), 'chkobba setup shown');
-      assert(/Chkobba/.test(txt(K, '#hero-h1')));
+      click(K, tile);
+      assert(visible(K, '#ck-setup') && !visible(K, '#dama-setup'), 'card game setup shown');
+      assert(new RegExp(tile === '#tile-ro' ? 'Ronda' : 'Chkobba').test(txt(K, '#hero-h1')));
+      if (tile === '#tile-ro') K.document.querySelector('input[name="ckt"][value="25"]').checked = true;
       K.document.querySelector('input[name="ckn"][value="' + players + '"]').checked = true;
       click(K, '#ck-start');
       assert(visible(K, '#ck'));
@@ -557,14 +558,15 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
 
 
   await test('Chkobba online: a table for 2 and for 4 (with a watcher), full games through the real screen, same layout as Dama', async () => {
-    for (const players of [2, 4]) {
+    for (const [players, tile] of [[2, '#tile-ck'], [4, '#tile-ck'], [2, '#tile-ro'], [4, '#tile-ro']]) {
       const wins = [];
       const mk = async (nick) => { const w = await open(port, '', null, nick); w.__ckFast = true; return w; };
       const H = await mk('Host');
-      click(H, '#tile-ck');
+      click(H, tile);
       H.document.querySelector('input[name="ckn"][value="' + players + '"]').checked = true;
+      if (tile === '#tile-ro') H.document.querySelector('input[name="ckt"][value="25"]').checked = true;
       click(H, '#ck-online');
-      assert(visible(H, '#online') && !visible(H, '#clock-wrap') && /Chkobba table/.test(txt(H, '#on-ck-sum')));
+      assert(visible(H, '#online') && !visible(H, '#clock-wrap') && new RegExp((tile === '#tile-ro' ? 'Ronda' : 'Chkobba') + ' table').test(txt(H, '#on-ck-sum')));
       $(H, '#nick').value = 'Host';
       click(H, '#create');
       await until(() => visible(H, '#game'), 3000, 'host at the table');
@@ -576,7 +578,8 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
       assert(/Waiting for/.test(txt(H, '#ck-status')));
       assert($(H, '#ck-act').disabled, 'cannot play before everyone is seated');
       assert($(H, '#ck-play').parentNode.id === 'ck-slot', 'the card table lives inside the Dama screen');
-      assert(/Chkobba/.test($(H, '#sh-wa').textContent + 'Chkobba'), 'whatsapp button there');
+      assert(new RegExp(tile === '#tile-ro' ? 'Ronda' : 'Chkobba').test(txt(H, '#sh-info')), 'the invite names the game');
+      assert(H.document.querySelector('#sh-link').value.indexOf('?g=' + (tile === '#tile-ro' ? 'ronda' : 'chkobba') + '#') > 0, 'the link names the game');
       const all = [H];
       for (let i = 1; i < players; i++) {
         const J = await mk('Friend' + i);

@@ -1,5 +1,7 @@
   /* ---------- Chkobba (الشكبة): drawn cards, table, computer opponents ---------- */
-  var CKE = window.Chkobba;
+  var CKE = window.Chkobba, CKG = 'chkobba';
+  function ckUse(game) { CKG = game === 'ronda' ? 'ronda' : 'chkobba'; CKE = CKG === 'ronda' ? window.Ronda : window.Chkobba; }
+  function gameTitle() { return CKG === 'ronda' ? 'Ronda' : 'Chkobba'; }
   var CK = null;
   var SUITN = ['diamonds', 'hearts', 'spades', 'clubs'], SUITG = ['♦', '♥', '♠', '♣'];
   var RANKN = ['', 'Ace', '2', '3', '4', '5', '6', '7', 'Queen', 'Jack', 'King'], RANKL = ['', 'A', '2', '3', '4', '5', '6', '7', 'Q', 'J', 'K'];
@@ -7,8 +9,24 @@
     5: [[38, 33], [62, 33], [50, 50], [38, 67], [62, 67]], 6: [[38, 30], [62, 30], [38, 50], [62, 50], [38, 70], [62, 70]],
     7: [[38, 30], [62, 30], [50, 40], [38, 50], [62, 50], [38, 70], [62, 70]] };
   function ckWait(ms) { return window.__ckFast ? 8 : ms; }
-  function cardName(id) { return RANKN[CKE.rank(id)] + ' of ' + SUITN[CKE.suit(id)]; }
-  function cardShort(id) { var r = CKE.rank(id); return (r >= 8 ? RANKN[r] + ' ' : RANKL[r]) + SUITG[CKE.suit(id)]; }
+  /* Ronda is played with Spanish cards: oros (coins), copas (cups), espadas (swords), bastos (clubs); 10, 11, 12 are Sota, Caballo, Rey */
+  var SP_SUITN = ['oros', 'copas', 'espadas', 'bastos'], SP_RANKN = ['', 'As', '2', '3', '4', '5', '6', '7', 'Sota', 'Caballo', 'Rey'];
+  function spNum(r) { return r >= 8 ? r + 2 : r; }
+  function cardName(id) { var r = CKE.rank(id); return CKG === 'ronda' ? (r >= 8 ? SP_RANKN[r] : spNum(r)) + ' de ' + SP_SUITN[CKE.suit(id)] : RANKN[r] + ' of ' + SUITN[CKE.suit(id)]; }
+  function cardShort(id) { var r = CKE.rank(id); return CKG === 'ronda' ? (r >= 8 ? SP_RANKN[r] : spNum(r)) + ' de ' + SP_SUITN[CKE.suit(id)] : (r >= 8 ? RANKN[r] + ' ' : RANKL[r]) + SUITG[CKE.suit(id)]; }
+  var SP_ICON = [
+    '<circle cx="20" cy="20" r="16.500" fill="#E3B23C" stroke="#8E5F0C" stroke-width="2"/><circle cx="20" cy="20" r="10.500" fill="none" stroke="#8E5F0C" stroke-width="1.600"/><circle cx="20" cy="20" r="4.500" fill="#8E5F0C"/>',
+    '<path d="M8 6h24c0 11-4.500 18-12 18S8 17 8 6z" fill="#D2402F" stroke="#6E1810" stroke-width="2" stroke-linejoin="round"/><path d="M13 10c0 6 2 9 4 10" fill="none" stroke="#F4B6A8" stroke-width="1.800" stroke-linecap="round"/><rect x="18" y="23" width="4" height="9" fill="#6E1810"/><rect x="10" y="32" width="20" height="4.500" rx="2" fill="#6E1810"/>',
+    '<path d="M20 1.500l4.500 7v18h-9v-18z" fill="#B6C8E0" stroke="#27456E" stroke-width="2" stroke-linejoin="round"/><path d="M20 5v20" stroke="#27456E" stroke-width="1.200"/><rect x="9" y="26" width="22" height="4.500" rx="2" fill="#27456E"/><rect x="17.500" y="30" width="5" height="8" rx="1.500" fill="#27456E"/>',
+    '<path d="M20 2c7 0 10.500 5.500 8 11l-2.500 4 3.500 18c.5 2.500-1.500 4-4 4h-10c-2.500 0-4.500-1.500-4-4l3.500-18-2.500-4C9.500 7.500 13 2 20 2z" fill="#58963F" stroke="#27511C" stroke-width="2" stroke-linejoin="round"/><circle cx="16" cy="12" r="1.500" fill="#27511C"/><circle cx="24" cy="21" r="1.500" fill="#27511C"/><circle cx="17" cy="30" r="1.500" fill="#27511C"/>'
+  ];
+  function spIcon(s) { return '<svg viewBox="0 0 40 40" aria-hidden="true">' + SP_ICON[s] + '</svg>'; }
+  function spCourt(r, s) {
+    var fig = r === 10 ? '<path d="M8 36L11 18l7 7 6-12 6 12 7-7 3 18z" fill="#E3B23C" stroke="#8E5F0C" stroke-width="2" stroke-linejoin="round"/><circle cx="11" cy="16" r="2.500" fill="#D2402F"/><circle cx="24" cy="10" r="2.500" fill="#D2402F"/><circle cx="37" cy="16" r="2.500" fill="#D2402F"/>'
+      : r === 9 ? '<path d="M10 40V20a14 14 0 0 1 28 0v20h-8V21a6 6 0 0 0-12 0v19z" fill="#9AA3AD" stroke="#3B434C" stroke-width="2" stroke-linejoin="round"/><circle cx="14" cy="26" r="1.800" fill="#3B434C"/><circle cx="34" cy="26" r="1.800" fill="#3B434C"/><circle cx="14" cy="34" r="1.800" fill="#3B434C"/><circle cx="34" cy="34" r="1.800" fill="#3B434C"/>'
+      : '<path d="M6 40C8 22 18 12 36 10c-2 8-6 12-12 14 6 0 9 4 8 8z" fill="#C0452F" stroke="#6E1810" stroke-width="2" stroke-linejoin="round"/><path d="M36 10c4-2 6-6 6-9-5 0-8 3-10 6z" fill="#E3B23C" stroke="#8E5F0C" stroke-width="1.600" stroke-linejoin="round"/>';
+    return '<div class="court sp"><svg class="sfig" viewBox="0 0 48 44" aria-hidden="true">' + fig + '</svg><span class="sbig">' + spIcon(s) + '</span><em>' + SP_RANKN[r].toUpperCase() + '</em></div>';
+  }
 
   /* the court figures are drawn here, one upper half that is repeated upside down */
   function courtSvg(r) {
@@ -32,23 +50,50 @@
     return '<svg viewBox="0 0 60 80" aria-hidden="true"><rect x=".5" y=".5" width="59" height="79" fill="none" stroke="#23201c" stroke-width=".5"/>' + half + '<g transform="rotate(180 30 40)">' + half + '</g>' +
       '<path d="M0 80 L60 0" stroke="#23201c" stroke-width=".6" opacity=".5"/></svg>';
   }
-  function cardSrc(n) { return (window.__cardSrc && window.__cardSrc[n]) || 'cards/' + n + '.png'; }
+  function cardSrc(n) { return (window.__cardSrc && window.__cardSrc[n]) || 'cards/' + n + (n.charAt(1) === '-' && n.charAt(0) === 'S' ? '.webp' : '.png'); }
   function cardHtml(id, cls, tag) {
+    if (CKG === 'ronda') return spCardHtml(id, cls, tag);
     var s = CKE.suit(id), r = CKE.rank(id), g = SUITG[s], col = s < 2 ? 'red' : 'blk';
     var corner = r >= 8 ? '<i class="cn ct"><u>' + g + '</u></i><i class="cn ct bt"><u>' + g + '</u></i>'     // court cards: the suit sign only, no letter
       : '<i class="cn"><b>' + RANKL[r] + '</b><u>' + g + '</u></i><i class="cn bt"><b>' + RANKL[r] + '</b><u>' + g + '</u></i>';
     var face;
     if (r <= 7) face = PIPS[r].map(function (p) { return '<span class="pip' + (r === 1 ? ' ace' : '') + '" style="left:' + p[0] + '%;top:' + p[1] + '%">' + g + '</span>'; }).join('');
-    else face = '<div class="court">' + courtSvg(r) + '</div><img class="cimg" alt="" src="' + cardSrc((r === 10 ? 'K' : r === 8 ? 'Q' : 'J') + '-' + 'dhsc'[s]) + '" onerror="this.remove()">';
+    else face = '<div class="court">' + courtSvg(r) + '</div><img class="cimg" alt="" src="' + cardSrc((r === 10 ? 'K' : r === 8 ? 'Q' : 'J') + '-' + 'dhsc'[s]) + '" decoding="sync" onerror="this.parentNode.classList.add(\'nocimg\');this.remove()">';
     tag = tag || 'button';
     return '<' + tag + (tag === 'button' ? ' type="button"' : '') + ' class="pc ' + col + (cls ? ' ' + cls : '') + '" data-id="' + id + '" aria-label="' + cardName(id) + '">' + corner + face + '</' + tag + '>';
   }
+  (function () { var L = ['K', 'Q', 'J'], S = 'dhsc'; window.__ckImgs = []; for (var a = 0; a < 3; a++) for (var b = 0; b < 4; b++) { var im = new Image(); im.src = cardSrc(L[a] + '-' + S[b]); window.__ckImgs.push(im); } })();
+  function spCardHtml(id, cls, tag) {
+    tag = tag || 'button';
+    var src = cardSrc('S-' + (id < 10 ? '0' : '') + id);
+    return '<' + tag + (tag === 'button' ? ' type="button"' : '') + ' class="pc spanish photo ' + (cls ? cls : '') + '" data-id="' + id + '" aria-label="' + cardName(id) + '"><img alt="" src="' + src + '" decoding="sync" draggable="false"></' + tag + '>';
+  }
+  (function () { window.__spImgs = []; for (var i = 0; i < 40; i++) { var im = new Image(); im.src = cardSrc('S-' + (i < 10 ? '0' : '') + i); window.__spImgs.push(im); } })();
   function backs(n, cls) { var h = ''; for (var i = 0; i < n; i++) h += '<span class="pc back' + (cls ? ' ' + cls : '') + '"></span>'; return h; }
 
   /* ----- the computer ----- */
   function cval(id) { var r = CKE.rank(id), s = CKE.suit(id); return 1 + (id === CKE.HAYA ? 12 : 0) + (r === 7 ? 5 : 0) + (r === 6 ? 2 : 0) + (s === 0 ? 2 : 0); }
   function aiKeep(id) { var r = CKE.rank(id); return id === CKE.HAYA || r === 7 || CKE.suit(id) === 0 || r === 6 || Math.random() < 0.35; }
+  function aiRonda(g, seat) {
+    var hand = g.hands[seat], best = null, team = CKE.teamOf(g, seat), lp = g.lastPlay;
+    var seen = {}; g.piles[0].concat(g.piles[1], g.table).forEach(function (c) { seen[CKE.rank(c)] = (seen[CKE.rank(c)] || 0) + 1; });
+    hand.forEach(function (c) {
+      var o = CKE.captures(g.table, c), sc;
+      if (o.length) {
+        sc = 10 + o[0].length * 3;
+        if (lp && lp.stayed && o[0].indexOf(lp.card) >= 0 && CKE.teamOf(g, lp.seat) !== team) sc += 8;      // caida
+        if (o[0].length === g.table.length) sc += 7;                                                          // missa
+      } else {
+        var same = hand.filter(function (x) { return CKE.rank(x) === CKE.rank(c); }).length;
+        sc = -((4 - (seen[CKE.rank(c)] || 0)) * 1.5) + (same > 1 ? -4 : 0);   // a rank with many left unseen is risky to leave (caida), and keep pairs
+      }
+      sc += Math.random() * (CK && CK.level === 'strong' ? 0.3 : CK && CK.level === 'easy' ? 6 : 1.8);
+      if (!best || sc > best.sc) best = { sc: sc, card: c, take: o.length ? o[0] : [] };
+    });
+    return best;
+  }
   function aiMove(g, seat) {
+    if (CKG === 'ronda') return aiRonda(g, seat);
     if (CK && CK.level === 'easy' && Math.random() < 0.55) {      // easy: often just picks any legal move
       var all = [];
       g.hands[seat].forEach(function (c) { var o = CKE.captures(g.table, c); if (o.length) o.forEach(function (t) { all.push({ card: c, take: t }); }); else all.push({ card: c, take: [] }); });
@@ -88,9 +133,9 @@
   function ckYou(s) { return s === 0 && !(CK.online && CK.watch); }
   /* what each team has taken so far: counted from the piles when I deal it, or sent by the server at an online table */
   function ckStats(g, q) {
-    if (g.stats) { var s = g.stats[q]; return { cards: s.cards, coins: s.coins, sevens: s.sevens, sixes: s.sixes, haya: !!s.haya, chk: g.chk[q] || 0 }; }
+    if (g.stats) { var s = g.stats[q]; return { pts: s.pts || 0, cards: s.cards, coins: s.coins, sevens: s.sevens, sixes: s.sixes, haya: !!s.haya, chk: g.chk[q] || 0 }; }
     var pl = g.piles[q] || [];
-    return { cards: pl.length, coins: pl.filter(function (c) { return CKE.suit(c) === 0; }).length, sevens: pl.filter(function (c) { return CKE.rank(c) === 7; }).length,
+    return { pts: g.dealPts ? g.dealPts[q] : 0, cards: pl.length, coins: pl.filter(function (c) { return CKE.suit(c) === 0; }).length, sevens: pl.filter(function (c) { return CKE.rank(c) === 7; }).length,
       sixes: pl.filter(function (c) { return CKE.rank(c) === 6; }).length, haya: pl.indexOf(CKE.HAYA) >= 0, chk: g.chk[q] || 0 };
   }
   function ckStart(n, target, level) {
@@ -99,10 +144,22 @@
     CK = { n: n, token: token, names: ckNames(n), g: CKE.newGame(n, target, Math.random, Math.floor(Math.random() * n)), sel: null, opts: [], pick: [], busy: true, msg: '', last: null, show: null, quit: null, level: level || (CK && CK.level) || 'normal' };
     closeOverlay('#ck-deal'); closeOverlay('#ck-cut');
     show('ck'); ckRender(); ckCutPhase();
+    if (CKG === 'ronda') ckAnnounceMsg(CK.g.ann);
   }
   function ckLater(fn, ms) { var t = CK.token; setTimeout(function () { if (CK && CK.token === t) fn(); }, ckWait(ms)); }
+  function ckAnnounceMsg(ann) {
+    if (!ann || !ann.items.length) return '';
+    var m = ann.items.map(function (it) { var t = CK.online ? ckoTeam(it.team) : it.team; return (it.kinds === 'tringa' ? 'Tringa! ' : 'Ronda! ') + ckTeamShort(t) + ' +' + it.count; }).join(' · ');
+    CK.msg = (CK.msg ? CK.msg + ' ' : '') + m; if (CK.g) ckRender();
+    sfx.play('king', 0.4);
+    return m;
+  }
   function ckCutPhase() {
     var g = CK.g; CK.busy = true; CK.sel = null; CK.pick = []; CK.opts = [];
+    if (g.phase === 'play') {                                  // Ronda has no cut: the cards are already dealt
+      CK.msg = CK.names[g.dealer] + (ckYou(g.dealer) ? ' deal' : ' deals') + '.';
+      ckRender(); ckLater(ckNext, 900); return;
+    }
     CK.msg = CK.names[g.dealer] + (ckYou(g.dealer) ? ' deal' : ' deals') + '. ' + CK.names[g.cutter] + (ckYou(g.cutter) ? ' cut the deck…' : ' cuts the deck…');
     ckRender();
     if (CK.online) {
@@ -151,10 +208,12 @@
     // Show the move on the table first: the played card lands, the cards taken glow, then they fly to the one who took them.
     var dir = seat === 0 ? 'down' : g.n === 2 ? 'up' : ['down', 'right', 'up', 'left'][seat];
     CK.show = { table: before.concat([card]), played: card, took: take.slice(), dir: dir };
-    CK.last = { seat: seat, card: card, took: take.slice(), chk: r.chkobba, text: nm + ' took ' };
-    CK.msg = take.length ? nm + ' took with ' + cardShort(card) + (r.chkobba ? ' — Chkobba!' : '.') : nm + (ckYou(seat) ? ' put down ' : ' puts down ') + cardShort(card) + '.';
+    CK.last = { seat: seat, card: card, took: take.slice(), chk: r.chkobba, text: nm + ' took ', flash: CKG === 'ronda' ? (r.flash || '') : 'Chkobba!' };
+    var flashWord = CKG === 'ronda' ? (r.flash || '') : 'Chkobba!';
+    CK.msg = take.length ? nm + ' took with ' + cardShort(card) + (r.chkobba ? ' — ' + flashWord : '.') : nm + (ckYou(seat) ? ' put down ' : ' puts down ') + cardShort(card) + '.';
     if (!take.length && !ckYou(seat)) CK.msg = nm + ' put down ' + cardShort(card) + '.';
-    if (r.dealtMore) CK.msg += g.deck.length ? ' New cards.' : ' New cards — last round! The last play can’t score a Chkobba.';
+    if (r.dealtMore) CK.msg += g.deck.length ? ' New cards.' : (CKG === 'ronda' ? ' New cards — last round!' : ' New cards — last round! The last play can’t score a Chkobba.');
+    if (r.ann && r.ann.items.length) { var annItems = CK.online ? r.ann.items.map(function (it) { return { team: it.team, count: it.count, kinds: it.kinds }; }) : r.ann.items; CK.msg += ' ' + annItems.map(function (it) { var t = CK.online ? ckoTeam(it.team) : it.team; return (it.kinds === 'tringa' ? 'Tringa! ' : 'Ronda! ') + ckTeamShort(t) + ' +' + it.count; }).join(' · '); }
     sfx.play(r.chkobba ? 'king' : take.length ? 'capture' : 'move');
     if (take.length && (card === CKE.HAYA || take.indexOf(CKE.HAYA) >= 0)) { sfx.play('haya', r.chkobba ? 0.55 : 0.12); CK.msg += ' 7♦!'; CK.last.haya = true; }   // the seven of diamonds gets its own chime
     CK.sel = null; CK.pick = []; CK.opts = [];
@@ -195,7 +254,7 @@
   }
 
   /* ----- the end of a deal and of the game ----- */
-  var ITEM = { cards: 'Most cards', coins: 'Most diamonds', sevens: 'Most sevens', haya: '7 of diamonds', chkobba: 'Chkobba' };
+  var ITEM = { cards: 'Most cards', coins: 'Most diamonds', sevens: 'Most sevens', haya: '7 of diamonds', chkobba: 'Chkobba', ronda: 'Ronda', tringa: 'Tringa', caida: 'Caida', missa: 'Missa', cardsover: 'Cards over 20' };
   function ckShowDeal(r) {
     var g = CK.g, rows = '';
     var items = r && r.score ? r.score.items : [];
@@ -204,11 +263,13 @@
     });
     (function () {
       var h = '', s0 = ckStats(g, 0), s1 = ckStats(g, 1);
-      var rowsD = [['Cards', 'cards'], ['Diamonds', 'coins'], ['Sevens', 'sevens'], ['Sixes', 'sixes']];
+      var rowsD = CKG === 'ronda' ? [['Cards', 'cards'], ['Points this deal', 'pts']] : [['Cards', 'cards'], ['Diamonds', 'coins'], ['Sevens', 'sevens'], ['Sixes', 'sixes']];
       h += '<tr><th></th><th>' + esc(ckTeam(0)) + '</th><th>' + esc(ckTeam(1)) + '</th></tr>';
       rowsD.forEach(function (rw) { var a = s0[rw[1]], b = s1[rw[1]]; h += '<tr><td>' + rw[0] + '</td><td class="' + (a > b ? 'win' : '') + '">' + a + '</td><td class="' + (b > a ? 'win' : '') + '">' + b + '</td></tr>'; });
-      h += '<tr><td>7♦</td><td>' + (s0.haya ? '✓' : '') + '</td><td>' + (s1.haya ? '✓' : '') + '</td></tr>';
-      h += '<tr><td>Chkobba</td><td>' + s0.chk + '</td><td>' + s1.chk + '</td></tr>';
+      if (CKG !== 'ronda') {
+        h += '<tr><td>7♦</td><td>' + (s0.haya ? '✓' : '') + '</td><td>' + (s1.haya ? '✓' : '') + '</td></tr>';
+        h += '<tr><td>Chkobba</td><td>' + s0.chk + '</td><td>' + s1.chk + '</td></tr>';
+      }
       $('#ck-deal-cmp').innerHTML = h;
     })();
     var title;
@@ -262,7 +323,7 @@
       var T = n === 4 ? 2 : n, h = '';
       for (var q = 0; q < T; q++) {
         var st = ckStats(g, q);
-        h += '<span class="pl ' + (q === 0 ? 'us' : 'them') + '"><i>' + esc(ckTeamShort(q)) + '</i><em><b>' + st.cards + '</b> <u>cards</u></em><em><b>' + st.coins + '</b> ♦</em><em><b>' + st.sevens + '</b> <u>sevens</u></em>' + (st.haya ? '<em>7♦</em>' : '') + (st.chk ? '<em><b>' + st.chk + '</b> <u>Chkobba</u></em>' : '') + '</span>';
+        h += '<span class="pl ' + (q === 0 ? 'us' : 'them') + '"><i>' + esc(ckTeamShort(q)) + '</i><em><b>' + st.cards + '</b> <u>cards</u></em>' + (CKG === 'ronda' ? '<em><b>' + st.pts + '</b> <u>this deal</u></em>' : '<em><b>' + st.coins + '</b> ♦</em><em><b>' + st.sevens + '</b> <u>sevens</u></em>' + (st.haya ? '<em>7♦</em>' : '') + (st.chk ? '<em><b>' + st.chk + '</b> <u>Chkobba</u></em>' : '')) + '</span>';
       }
       $('#ck-piles').innerHTML = h;
     })();
@@ -291,7 +352,7 @@
     if (lp) lh = cardHtml(lp.card, 'mini', 'div') + (lp.took.length ? '<span class="arrow">→</span>' + lp.took.map(function (t) { return cardHtml(t, 'mini', 'div'); }).join('') : '<span class="arrow">↓</span>');
     $('#ck-last').innerHTML = lh;
     $('#ck-status').textContent = CK.msg;
-    $('#ck-chk').hidden = !(lp && lp.chk && CK.show);
+    $('#ck-chk').hidden = !(lp && lp.chk && CK.show); if (lp && lp.flash) $('#ck-chk').textContent = lp.flash;
     $('#ck-haya').hidden = !(lp && lp.haya && CK.show);
     var act = $('#ck-act'), label;
     if (CK.online && CK.watch) { label = 'You are watching'; act.disabled = true; }
@@ -338,14 +399,15 @@
     if (!CK.quit) { b.textContent = 'Tap again to quit'; CK.quit = setTimeout(function () { if (CK) { CK.quit = null; } b.textContent = '← Menu'; }, 3000); return; }
     clearTimeout(CK.quit); b.textContent = '← Menu'; CK.token++; CK.quit = null; closeOverlay('#ck-cut'); closeOverlay('#ck-deal'); show('menu');
   });
-  $('#ck-help').addEventListener('click', function () { openOverlay('#ck-rules'); });
-  $('#ck-rules-btn').addEventListener('click', function () { openOverlay('#ck-rules'); });
+  $('#ck-help').addEventListener('click', function () { openOverlay(CKG === 'ronda' ? '#ro-rules' : '#ck-rules'); });
+  $('#ck-rules-btn').addEventListener('click', function () { openOverlay(CKG === 'ronda' ? '#ro-rules' : '#ck-rules'); });
+  $('#ro-rules-close').addEventListener('click', function () { closeOverlay('#ro-rules'); });
   $('#ck-rules-close').addEventListener('click', function () { closeOverlay('#ck-rules'); });
   $('#ck-online').addEventListener('click', function () { openOnline('', 'ck'); });
   $('#ck-start').addEventListener('click', function () {
     var v = function (nm) { var c = document.querySelector('input[name="' + nm + '"]:checked'); return c ? +c.value : null; };
-    var n = v('ckn') || 2, t = v('ckt') || 11, lv = (document.querySelector('input[name="ckl"]:checked') || {}).value || 'normal';
-    try { localStorage.setItem('dama-ck', JSON.stringify({ n: n, t: t })); } catch (e) {}
+    var n = v('ckn') || 2, t = v('ckt') || (CKG === 'ronda' ? 41 : 11), lv = (document.querySelector('input[name="ckl"]:checked') || {}).value || 'normal';
+    if (CKG !== 'ronda') try { localStorage.setItem('dama-ck', JSON.stringify({ n: n, t: t })); } catch (e) {}
     ckStart(n, t, lv);
   });
   (function ckPrefs() {
@@ -388,11 +450,19 @@
       if (i === ms && !CK.watch) h = (v.hand || []).slice(); else { h = []; for (var k = 0; k < v.handN[i]; k++) h.push(-1); }
       hands[rot(i)] = h;
     }
+    CK.turnSec = v.turnSec || 0; CK.deadline = v.tl != null ? Date.now() + v.tl : null;
     var deck = []; for (i = 0; i < v.deck; i++) deck.push(-1);
     function two(a) { return swap ? [a[1], a[0]] : [a[0], a[1]]; }
     return { n: n, target: v.target, dealer: rot(v.dealer), cutter: rot(v.cutter), phase: v.phase, turn: rot(v.turn), scores: two(v.scores), over: !!v.over,
       winner: v.winner == null ? null : (swap ? 1 - v.winner : v.winner), deck: deck, table: v.table.slice(), hands: hands, stats: two(v.stats), chk: two(v.chk), deals: v.deals, cutCard: v.cutCard };
   }
+  setInterval(function () {
+    var el = $('#ck-timer');
+    if (!CK || !CK.online || !CK.deadline || !CK.g || (CK.g.phase !== 'play' && CK.g.phase !== 'cut') || (G && !G.peer)) { if (!el.hidden) el.hidden = true; return; }
+    var left = Math.max(0, Math.ceil((CK.deadline - Date.now()) / 1000));
+    var who = CK.g.phase === 'cut' ? CK.g.cutter : CK.g.turn;
+    el.hidden = false; el.textContent = '⏱ ' + left + 's · ' + (ckYou(who) ? 'your turn' : CK.names[who]); el.className = 'ck-timer' + (left <= 10 ? ' low' : '');
+  }, 500);
   function ckoBlank(n) { var h = []; for (var i = 0; i < n; i++) h.push([]); return h; }
   function ckoTeam(t) { return (CK.n === 4 ? CK.mySeat % 2 : CK.mySeat) === 1 ? 1 - t : t; }
   function ckoSyncPeople() {
@@ -418,11 +488,11 @@
     var box = $('#sh-seats-ck');
     box.className = 'wr-seats' + (n === 4 ? ' four' : '');
     if (box.getAttribute('data-sig') !== h) { box.innerHTML = h; box.setAttribute('data-sig', h); }
-    var full = filled === n, base = location.origin + location.pathname + '#' + G.code;
+    var full = filled === n, base = location.origin + location.pathname + '?g=' + (CKG === 'ronda' ? 'ronda' : 'chkobba') + '#' + G.code;
     $('#sh-code').textContent = G.code; $('#sh-link').value = base; $('#sh-wlink').value = base + '/watch';
     $('#sh-opp-block').hidden = full;
     $('#sh-count').textContent = full ? 'Everyone is seated · ready' : filled + ' seated · ' + (n - filled) + ' to go';
-    $('#sh-info').textContent = 'Chkobba · ' + (n === 4 ? '4 players in teams' : '2 players') + ' · to ' + G.target;
+    $('#sh-info').textContent = gameTitle() + ' · ' + (n === 4 ? '4 players in teams' : '2 players') + ' · to ' + G.target;
     $('#sh-title').textContent = full ? 'Invite watchers' : (n === 2 ? 'Invite your friend' : 'Invite your friends');
     $('#sh-share').hidden = !navigator.share;
   }
@@ -460,6 +530,7 @@
       closeOverlay('#ck-deal'); closeOverlay('#ck-cut');
       CK.g = ckoBuild(m.view); CK.last = null; CK.show = null; CK.ready = []; CK.waiting = false; CK.token++;
       ckoRender(); ckoCutPhase();
+      if (CKG === 'ronda' && m.view && m.view.ann) ckAnnounceMsg(m.view.ann);
       return;
     }
     if (m.t !== 'ckmoved') return;
@@ -476,7 +547,7 @@
       var rs = (ev.seat - CK.mySeat + CK.n) % CK.n;
       var score = ev.score ? { items: ev.score.items.map(function (it) { var o = {}; for (var k in it) o[k] = it[k]; o.team = ckoTeam(it.team); return o; }) } : null;
       CK.sel = null; CK.pick = []; CK.opts = [];
-      ckShowMove(rs, ev.card, ev.took || [], { chkobba: !!ev.chk, dealtMore: !!ev.more, ended: !!ev.ended, score: score }, before);
+      ckShowMove(rs, ev.card, ev.took || [], { chkobba: !!ev.chk, flash: ev.flash || '', ann: ev.ann || null, dealtMore: !!ev.more, ended: !!ev.ended, score: score }, before);
       ckoRender();
     }
   }
@@ -490,9 +561,10 @@
   function ckoJoined(m) {
     net.code = m.code; net.token = m.token; net.ice = m.ice; net.needResume = false; net.leaving = false;
     saveSession();
+    ckUse(m.game);
     var watcher = m.role === 'watcher';
     joinAuto = null; closeOverlay('#joining');
-    try { var wantHash = '#' + m.code + (watcher ? '/watch' : ''); if (location.hash !== wantHash) history.replaceState(null, '', wantHash); } catch (e) {}
+    try { document.title = gameTitle(); var wantHash = '#' + m.code + (watcher ? '/watch' : ''); if (location.hash !== wantHash) history.replaceState(null, '', wantHash); } catch (e) {}
     clearTimeout(timer); token++; thinking = false; busy = false; moveQ = [];
     G = {
       online: true, kind: 'ck', role: watcher ? 'watcher' : 'player', myId: m.id, host: !!m.host, hostId: null, crowd: m.crowd || [], clock: null,
@@ -524,13 +596,21 @@
 
   /* the home screen: pick the game, each game has its own menu */
   function setGame(which) {
-    var ck = which === 'ck';
+    var ck = which === 'ck' || which === 'ro', ro = which === 'ro';
+    if (ck) ckUse(ro ? 'ronda' : 'chkobba');
     $('#dama-setup').hidden = ck; $('#ck-setup').hidden = !ck;
-    $('#hero-h1').textContent = ck ? 'Chkobba' : 'Moroccan Dama'; $('#hero-ar').textContent = ck ? '\u0627\u0644\u0634\u0643\u0628\u0629' : '\u0627\u0644\u0636\u0627\u0645\u0629 \u0627\u0644\u0645\u063a\u0631\u0628\u064a\u0629';
-    document.title = ck ? 'Chkobba' : 'Moroccan Dama';
+    $('#hero-h1').textContent = ro ? 'Ronda' : ck ? 'Chkobba' : 'Moroccan Dama';
+    $('#hero-ar').textContent = ro ? '\u0627\u0644\u0631\u0648\u0646\u062f\u0627' : ck ? '\u0627\u0644\u0634\u0643\u0628\u0629' : '\u0627\u0644\u0636\u0627\u0645\u0629 \u0627\u0644\u0645\u063a\u0631\u0628\u064a\u0629';
+    if (ck) {
+      var vals = ro ? [41, 25] : [11, 21], ins = document.querySelectorAll('input[name="ckt"]');
+      for (var i = 0; i < ins.length; i++) { ins[i].value = vals[i]; ins[i].parentNode.lastChild.textContent = vals[i] + ' points'; }
+      $('#ck-start').hidden = false;
+    }
+    document.title = ro ? 'Ronda' : ck ? 'Chkobba' : 'Moroccan Dama';
   }
   $('#tile-dama').addEventListener('click', function () { setGame('dama'); show('menu'); });
   $('#tile-ck').addEventListener('click', function () { setGame('ck'); show('menu'); });
-  $('#menu-back').addEventListener('click', function () { document.title = 'Dama and Chkobba'; show('hub'); });
-  setGame('dama'); document.title = 'Dama and Chkobba';
+  $('#tile-ro').addEventListener('click', function () { setGame('ro'); show('menu'); });
+  $('#menu-back').addEventListener('click', function () { document.title = 'Dama, Chkobba and Ronda'; show('hub'); });
+  setGame('dama'); document.title = 'Dama, Chkobba and Ronda';
   window.__ck = function () { CK.render = ckRender; return CK; };   // lets the automated tests look at the game

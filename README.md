@@ -114,3 +114,11 @@ The easiest free option is Metered (20 GB a month free):
 2. In Hostinger, open your Node.js app, then Environment variables, and add:
    `METERED_APP` = your app name, and `METERED_API_KEY` = your API key.
 3. Redeploy. The server log shows `Metered relay: N servers loaded`, and voice then works across networks.
+
+## Games
+
+- **Moroccan Dama**: online with voice, chat, clock, puzzles.
+- **Chkobba** (Tunisian): against the computer, or online tables for 2 or 4 (teams), same screen as Dama.
+- **Ronda** (Moroccan): same table code as Chkobba (`src/ronda.js`), 41 or 25 points; Ronda/Tringa announced, caida, missa.
+- Online card tables can have an optional turn timer (30/60 s); when it runs out the server plays for the absent player.
+- Invite links carry the game (`?g=chkobba` / `?g=ronda`) so WhatsApp previews name the game.
