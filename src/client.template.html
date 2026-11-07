@@ -622,6 +622,33 @@
   @media (min-width: 861px) {
     #game[data-kind="ck"] .ck-slot { min-height: 640px; }
   }
+
+  /* ---------- wooden Dama board (light tan and dark walnut squares, thick wooden frame, slight perspective, gold and blue coins) ---------- */
+  :root { --ivory-1: #FFE9A3; --ivory-2: #C98E15; --ruby-1: #5C97EA; --ruby-2: #12306E; }
+  .stage:has(#board) { perspective: 1400px; }
+  .board { border: 18px solid transparent; border-radius: 10px;
+    background: linear-gradient(#E4C48C, #E4C48C) padding-box, linear-gradient(135deg, rgba(255,214,150,.30), rgba(0,0,0,.28) 55%, rgba(255,214,150,.12)) border-box, url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><rect width='100%' height='100%' fill='%236A3B1B'/><filter id='f' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.008 .20' numOctaves='3' seed='2'/><feColorMatrix values='0 0 0 0 .04  0 0 0 0 .04  0 0 0 0 .04  0 0 0 1.0 -.12'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>") border-box;
+    box-shadow: inset 0 0 0 1.5px rgba(30,12,0,.7), 0 0 0 1.5px rgba(30,12,0,.75), 0 22px 28px -6px rgba(0,0,0,.65), 0 3px 0 rgba(255,214,150,.18);
+    transform: rotateX(16deg); transform-origin: 50% 100%; margin-top: -4%; }
+  .board .grid { box-shadow: inset 0 0 14px rgba(0,0,0,.55), 0 0 0 1px rgba(30,12,0,.8); }
+  .board .sq { background-color: #E4C48C; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><rect width='100%' height='100%' fill='%23E4C48C'/><filter id='f' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.012 .28' numOctaves='3' seed='4'/><feColorMatrix values='0 0 0 0 .40  0 0 0 0 .40  0 0 0 0 .40  0 0 0 .9 -.12'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>"); box-shadow: inset 0 0 0 .5px rgba(60,30,5,.25); }
+  .board .sq.dark { background-color: #7A4521; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><rect width='100%' height='100%' fill='%237A4521'/><filter id='f' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.010 .32' numOctaves='3' seed='9'/><feColorMatrix values='0 0 0 0 .08  0 0 0 0 .08  0 0 0 0 .08  0 0 0 1.1 -.12'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>"); box-shadow: inset 0 0 0 .5px rgba(0,0,0,.35); }
+  .board .sq.sel { box-shadow: inset 0 0 0 3px var(--gold-bright); }
+  .board .sq.hint { box-shadow: inset 0 0 0 4px var(--gold-bright); }
+  .piece .stone { width: 80%; box-shadow: 0 0 0 1.5px rgba(40,22,0,.7), 0 4px 3px rgba(0,0,0,.55), inset 0 -3px 5px rgba(0,0,0,.28), inset 0 2px 3px rgba(255,255,255,.35); }
+  .piece.h .stone { background: radial-gradient(circle at 36% 30%, var(--ph1) 0%, var(--ph2) 38%, var(--ph3) 100%); }
+  .piece.a .stone { background: radial-gradient(circle at 36% 30%, var(--pa1) 0%, var(--pa2) 40%, var(--pa3) 100%); }
+  .piece .stone::before { inset: 14%; box-shadow: inset 0 0 0 1.5px rgba(40,22,0,.35), inset 0 0 0 4px rgba(255,255,255,.10); }
+  .piece.h.k .stone svg { fill: var(--kh); stroke: rgba(255,255,255,.45); }
+  .piece.a.k .stone svg { fill: var(--ka); stroke: rgba(0,0,0,.45); }
+  :root { --ph1: #FFE9A3; --ph2: #E9B73A; --ph3: #B8800F; --pa1: #6a6a72; --pa2: #2a2a30; --pa3: #08080b; --kh: #5A3606; --ka: #FFE9A3; }
+  .piece.k .stone { box-shadow: 0 0 0 1.5px rgba(40,22,0,.7), 0 0 0 4px rgba(20,8,0,.5), 0 0 0 5.5px var(--gold-bright), 0 4px 6px rgba(0,0,0,.55), inset 0 -3px 5px rgba(0,0,0,.28); }
+
+  /* black and white board */
+  :root[data-board="bw"] .board { background: linear-gradient(#F2F2F2, #F2F2F2) padding-box, linear-gradient(135deg, rgba(255,255,255,.28), rgba(0,0,0,.35) 55%, rgba(255,255,255,.1)) border-box, linear-gradient(#26262B, #26262B) border-box; }
+  :root[data-board="bw"] .board .sq { background-color: #F2F2F2; background-image: linear-gradient(135deg, rgba(255,255,255,.7), rgba(0,0,0,.06)); box-shadow: inset 0 0 0 .5px rgba(0,0,0,.18); }
+  :root[data-board="bw"] .board .sq.dark { background-color: #1B1B20; background-image: linear-gradient(135deg, rgba(255,255,255,.10), rgba(0,0,0,.35)); box-shadow: inset 0 0 0 .5px rgba(0,0,0,.6); }
+  :root[data-board="bw"] .piece .stone { box-shadow: 0 0 0 1.5px rgba(255,255,255,.7), 0 0 0 3px rgba(0,0,0,.55), 0 4px 3px rgba(0,0,0,.55), inset 0 -3px 5px rgba(0,0,0,.28), inset 0 2px 3px rgba(255,255,255,.3); }
 </style>
 </head>
 <body>
@@ -733,6 +760,7 @@
           <label><input type="radio" name="first" value="ai">Computer</label>
         </div>
       </fieldset>
+      <div class="row"><button class="btn pc-btn" type="button">🎨 Board &amp; pieces</button></div>
       <div class="row"><button class="btn big" id="start" type="button">New Game</button></div>
       <div class="row small-row"><button class="btn" id="open-puzzles" type="button">Puzzles</button><button class="btn ghost" id="menu-rules" type="button">Rules</button><button class="btn ghost snd-toggle" type="button">Sound: on</button></div>
       </div>
@@ -876,6 +904,7 @@
           <button class="btn" id="g-rules" type="button">Rules</button>
           <button class="btn snd-toggle" type="button">Sound: on</button>
           <button class="btn theme-btn" id="theme-btn2" type="button" data-no-i18n aria-label="Theme"></button>
+          <button class="btn pc-btn" type="button">🎨 Board &amp; pieces</button>
           <button class="btn" id="to-menu" type="button">Main menu</button>
           <button class="btn" id="draw" type="button" hidden style="grid-column: 1 / -1">Players agree a draw</button>
         </div>
@@ -973,7 +1002,7 @@
 <div class="overlay" id="puzzles" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="pz-title">
     <h2 id="pz-title">Tactic puzzles</h2>
-    <p class="lead">Ivory to move. Find the move that wins material by force. Often you have to give a stone first.</p>
+    <p class="lead">You move first. Find the move that wins material by force. Often you have to give a stone first.</p>
     <div class="pz-grid" id="pz-grid"></div>
     <p class="hint" id="pz-progress"></p>
     <div class="row"><button class="btn ghost" id="pz-close" type="button">Close</button></div>
@@ -1164,12 +1193,13 @@
 
   function sideLabel(side) {
     if (online()) return G.names[side] || 'Opponent';
-    if (G && G.puzzle) return side === 1 ? 'You' : 'Ruby';
+    if (G && G.puzzle) return side === 1 ? 'You' : colName(-1);
     if (isAI()) return side === 1 ? 'You' : 'Computer';
-    return side === 1 ? 'Ivory' : 'Ruby';
+    return colName(side);
   }
+  function colName(side) { return PCOL ? PCOL.name(side) : (side === 1 ? 'White' : 'Gold'); }
   function sideTitle(side) {
-    var colour = side === 1 ? 'Ivory' : 'Ruby';
+    var colour = colName(side);
     if (online()) {
       var n = G.names[side];
       return (n || 'Waiting for friend') + (side === G.mySide ? ' (you)' : '') + ' · ' + colour;
@@ -1355,6 +1385,53 @@
     var lb = document.getElementById('lang-btn'); if (lb) lb.addEventListener('click', function () { setTimeout(labels, 50); });
     apply();
     return { next: next, get: function () { return cur; }, labels: labels };
+  })();
+
+  /* ---------- piece colours: each side can be gold, yellow, white, black, blue, red or green (saved on this device) ---------- */
+  var PCOL = (function () {
+    var C = { gold: ['#FFE9A3', '#E9B73A', '#B8800F', '#5A3606', 'Gold'], yellow: ['#FFF59A', '#FFD400', '#A98600', '#4A3A00', 'Yellow'],
+      white: ['#FFFFFF', '#F0ECE2', '#ADA58F', '#6B5A2E', 'White'], black: ['#7A7A84', '#2C2C33', '#08080B', '#FFE9A3', 'Black'],
+      blue: ['#7DB0F5', '#3E78D0', '#123780', '#FFE9A3', 'Blue'], red: ['#FF9A9A', '#D8302F', '#7A0C14', '#FFE9A3', 'Red'], green: ['#9BE8AB', '#2E9E52', '#0B4A24', '#FFE9A3', 'Green'] };
+    var cur = { h: 'white', a: 'gold' }, board = 'bw';
+    try { board = localStorage.getItem('dama-board') === 'wood' ? 'wood' : 'bw'; } catch (e) {}
+    function applyBoard() { if (board === 'bw') document.documentElement.setAttribute('data-board', 'bw'); else document.documentElement.removeAttribute('data-board'); try { localStorage.setItem('dama-board', board); } catch (e) {} }
+    try { var sv = JSON.parse(localStorage.getItem('dama-pc') || 'null'); if (sv && C[sv.h] && C[sv.a] && sv.h !== sv.a) cur = sv; } catch (e) {}
+    function apply() {
+      var st = document.documentElement.style, h = C[cur.h], a = C[cur.a];
+      st.setProperty('--ph1', h[0]); st.setProperty('--ph2', h[1]); st.setProperty('--ph3', h[2]); st.setProperty('--kh', h[3]);
+      st.setProperty('--pa1', a[0]); st.setProperty('--pa2', a[1]); st.setProperty('--pa3', a[2]); st.setProperty('--ka', a[3]);
+      st.setProperty('--ivory-1', h[0]); st.setProperty('--ivory-2', h[2]); st.setProperty('--ruby-1', a[1]); st.setProperty('--ruby-2', a[2]);
+      try { localStorage.setItem('dama-pc', JSON.stringify(cur)); } catch (e) {}
+    }
+    function pick(side, key) { var other = side === 'h' ? 'a' : 'h'; if (cur[other] === key) cur[other] = cur[side]; cur[side] = key; apply(); }
+    function open() {
+      var old = document.getElementById('pc-dlg'); if (old) old.remove();
+      var d = document.createElement('div'); d.id = 'pc-dlg';
+      d.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px';
+      function row(side, title) {
+        return '<div style="margin:0 0 14px"><div style="font-weight:600;margin:0 0 8px">' + title + '</div><div style="display:flex;gap:10px;flex-wrap:wrap">' + Object.keys(C).map(function (k) {
+          var c = C[k], on = cur[side] === k;
+          return '<button type="button" data-side="' + side + '" data-k="' + k + '" aria-label="' + c[4] + '" title="' + c[4] + '" style="width:44px;height:44px;border-radius:50%;border:' + (on ? '3px solid #F0C24B' : '2px solid rgba(255,255,255,.35)') + ';background:radial-gradient(circle at 36% 30%,' + c[0] + ',' + c[1] + ' 45%,' + c[2] + ');box-shadow:' + (on ? '0 0 0 2px #14172b' : 'none') + '"></button>';
+        }).join('') + '</div></div>';
+      }
+      function draw() {
+        d.innerHTML = '<div style="background:#124a3a;color:#f6efdc;border:2px solid #c48f22;border-radius:16px;max-width:360px;width:100%;padding:20px;font:16px/1.4 system-ui,sans-serif">'
+          + '<h3 style="margin:0 0 14px;font-size:19px;color:#f0c24b">Board and pieces</h3>' + '<div style="margin:0 0 14px"><div style="font-weight:600;margin:0 0 8px">Board</div><div style="display:flex;gap:10px">'
+          + [['wood', 'Wood'], ['bw', 'Black & white']].map(function (b) { var on = board === b[0]; return '<button type="button" data-board="' + b[0] + '" style="flex:1;padding:12px;border-radius:10px;font-size:15px;color:#f6efdc;background:' + (on ? 'rgba(240,194,75,.25)' : 'transparent') + ';border:' + (on ? '2px solid #F0C24B' : '1px solid rgba(255,255,255,.35)') + '">' + b[1] + '</button>'; }).join('') + '</div></div>'
+          + row('h', 'Player 1 (the side that moves first)') + row('a', 'Player 2')
+          + '<button type="button" id="pc-ok" style="width:100%;padding:12px;border-radius:10px;border:0;background:linear-gradient(#f0c24b,#c48f22);color:#2a1d00;font-weight:700;font-size:16px">OK</button></div>';
+      }
+      draw(); document.body.appendChild(d);
+      d.addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) { if (e.target === d) d.remove(); return; }
+        if (b.id === 'pc-ok') { d.remove(); return; }
+        if (b.dataset.board) { board = b.dataset.board; applyBoard(); draw(); return; }
+        if (b.dataset.k) { pick(b.dataset.side, b.dataset.k); draw(); }
+      });
+    }
+    document.querySelectorAll('.pc-btn').forEach(function (b) { b.addEventListener('click', open); });
+    apply(); applyBoard();
+    return { open: open, get: function () { return cur; }, name: function (side) { return C[side === 1 ? cur.h : cur.a][4]; } };
   })();
 
   /* ---------- pieces layer ---------- */
@@ -1566,9 +1643,9 @@
     if (G.puzzle) {
       var P = G.puzzle;
       if (P.step === 2) { s = 'Solved!<br><span class="solved-note">Puzzle ' + P.n + ' complete</span>'; sub = P.summary; }
-      else if (G.turn === -1) { s = '<span class="pulse"></span>Ruby must capture'; sub = 'Capture is compulsory, so they have no choice.'; }
+      else if (G.turn === -1) { s = '<span class="pulse"></span>' + colName(-1) + ' must capture'; sub = 'Capture is compulsory, so they have no choice.'; }
       else if (P.step === 1) { s = 'Now take them!'; sub = 'Capture is compulsory. Choose the longest capture.'; }
-      else { s = 'Puzzle ' + P.n + '. Ivory to move.'; sub = P.msg || 'Find the move that wins material by force. You may need to give a stone first.'; }
+      else { s = 'Puzzle ' + P.n + '. ' + colName(1) + ' to move.'; sub = P.msg || 'Find the move that wins material by force. You may need to give a stone first.'; }
       return s + (sub ? '<small>' + sub + '</small>' : '');
     }
     if (G.over) {
@@ -1723,8 +1800,8 @@
     $('#v-moves').textContent = G.log.length;
     $('#v-ivory').textContent = E.countPieces(G.board, 1);
     $('#v-ruby').textContent = E.countPieces(G.board, -1);
-    $('#v-ivory-l').textContent = on ? sideLabel(1) + ' left' : isAI() ? 'your stones left' : 'Ivory left';
-    $('#v-ruby-l').textContent = on ? sideLabel(-1) + ' left' : isAI() ? 'computer stones left' : 'Ruby left';
+    $('#v-ivory-l').textContent = on ? sideLabel(1) + ' left' : isAI() ? 'your stones left' : colName(1) + ' left';
+    $('#v-ruby-l').textContent = on ? sideLabel(-1) + ' left' : isAI() ? 'computer stones left' : colName(-1) + ' left';
     $('#v-again').textContent = on ? 'Rematch (swap colours)' : 'Play again';
     $('#v-menu').textContent = on ? 'Leave table' : 'Main menu';
     $('#v-again').disabled = !!(on && G.rematchMe);
@@ -2298,7 +2375,7 @@
     var h = hashId(e.id);
     var micOff = self ? !sending() : (!player && e.muted);
     var ck = G.kind === 'ck';
-    var role = player ? (isHost ? ICON.crown : '') + (ck ? (G.n === 4 ? 'Team ' + (e.seat % 2 + 1) : 'Player') : (e.side === 1 ? 'Ivory' : 'Ruby')) : ICON.eye + 'Watching';
+    var role = player ? (isHost ? ICON.crown : '') + (ck ? (G.n === 4 ? 'Team ' + (e.seat % 2 + 1) : 'Player') : colName(e.side)) : ICON.eye + 'Watching';
     var cls = 'pp' + (player ? ((ck ? e.seat % 2 === 0 : e.side === 1) ? ' p-h' : ' p-a') : '') + (e.online ? '' : ' off');
     var btn = '';
     if (G.host && !player && e.online) btn = '<button class="pm' + (e.muted ? ' on' : '') + '" type="button" data-mute="' + e.id + '">' + (e.muted ? 'Unmute' : 'Mute') + '</button>';

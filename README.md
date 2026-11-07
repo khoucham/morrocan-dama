@@ -122,3 +122,6 @@ The easiest free option is Metered (20 GB a month free):
 - **Ronda** (Moroccan): same table code as Chkobba (`src/ronda.js`), 41 or 25 points; Ronda/Tringa announced, derba (1), khamssa (5) and bachra (10) on the 2nd, 3rd and 4th card of the same number in a row, missa.
 - Online card tables can have an optional turn timer (30/60 s); when it runs out the server plays for the absent player.
 - Invite links carry the game (`?g=chkobba` / `?g=ronda`) so WhatsApp previews name the game.
+
+## Board & piece colours (Dama)
+Tap **🎨 Board & pieces** (setup screen or in-game menu) to choose the board (Black & white default, or Wood) and the colour of your pieces and the opponent's (White, Gold, Black, Blue, Red, Green...). Defaults: black-and-white board, you White vs opponent Gold. The choice is saved on the device.

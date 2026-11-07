@@ -103,12 +103,12 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
     assert(visible(A, '#share-box') && visible(A, '#voice-box'));
     assert(/Waiting for your friend/.test(txt(A, '#status')));
     assert.strictEqual($(A, '#sh-link').value, 'http://127.0.0.1:' + port + '/#' + code);
-    assert(/Mohamed \(you\) · Ivory/.test(txt(A, '#who-bottom')));
+    assert(/Mohamed \(you\) · White/.test(txt(A, '#who-bottom')));
     assert.strictEqual(A.document.querySelectorAll('.piece').length, 24);
     assert.strictEqual(A.document.querySelectorAll('.piece.can').length, 0, 'cannot move before a friend joins');
   });
 
-  await test("player B taps the invite link and is at the table straight away, seeing the board from Ruby's side", async () => {
+  await test("player B taps the invite link and is at the table straight away, seeing the board from the second side", async () => {
     B = await open(port, code, null, 'Friend');
     await until(() => visible(B, '#game'), 3000, 'B in game without any dialog');
     assert(!visible(B, '#online') && !visible(B, '#joining'), 'no dialogs left open');
@@ -116,9 +116,9 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
     await until(() => !visible(A, '#sh-opp-block'), 3000, 'A notified');
     assert(visible(A, '#share-box') && visible(A, '#sh-watch-block'), 'host can still invite watchers');
     assert(!visible(B, '#share-box'), 'the guest has no invite box');
-    assert(/Friend \(you\) · Ruby/.test(txt(B, '#who-bottom')));
-    assert(/Mohamed · Ivory/.test(txt(B, '#who-top')));
-    assert(/Friend · Ruby/.test(txt(A, '#who-top')));
+    assert(/Friend \(you\) · Gold/.test(txt(B, '#who-bottom')));
+    assert(/Mohamed · White/.test(txt(B, '#who-top')));
+    assert(/Friend · Gold/.test(txt(A, '#who-top')));
     assert.strictEqual($(A, '.sq.dark').getAttribute('data-i'), '7', 'A: normal orientation, mirrored board');
     assert.strictEqual($(B, '.sq.dark').getAttribute('data-i'), '56', 'B: board turned around');
     // the long diagonal (8 squares) ends in the bottom-right corner for both players
@@ -343,7 +343,7 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
     assert(new RegExp(sol.text.replace('–', '.')).test(txt(Q, '#status')), 'answer is named: ' + txt(Q, '#status'));
     // the right move
     click(Q, '.sq.dark[data-i="' + sol.from + '"]'); click(Q, '.sq.dark[data-i="' + sol.path[0] + '"]');
-    await until(() => /Ruby must capture|Now take them/.test(txt(Q, '#status')), 3000, 'forced reply starts');
+    await until(() => /Gold must capture|Now take them/.test(txt(Q, '#status')), 3000, 'forced reply starts');
     await until(() => /Now take them/.test(txt(Q, '#status')), 4000, 'Ruby has captured: ' + txt(Q, '#status'));
     await until(() => !Q.document.querySelector('.piece.moving') && Q.document.querySelectorAll('.piece.can, .piece.must').length > 0, 3000, 'my capture is ready');
     await playOne(Q);
@@ -380,8 +380,8 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
     await until(() => /Mohamed wants a rematch/.test(txt(B, '#v-rematch-note')), 2000, 'B told');
     click(B, '#v-again');
     await until(() => !visible(A, '#victory') && !visible(B, '#victory'), 3000, 'overlays closed');
-    assert(/Mohamed \(you\) · Ruby/.test(txt(A, '#who-bottom')));
-    assert(/Friend \(you\) · Ivory/.test(txt(B, '#who-bottom')));
+    assert(/Mohamed \(you\) · Gold/.test(txt(A, '#who-bottom')));
+    assert(/Friend \(you\) · White/.test(txt(B, '#who-bottom')));
     assert.strictEqual($(A, '.sq.dark').getAttribute('data-i'), '56', 'A now sees Ruby side');
     assert.strictEqual($(B, '.sq.dark').getAttribute('data-i'), '7');
     await until(() => B.document.querySelectorAll('.piece.can').length === 4, 2000, 'B (Ivory) moves first');
@@ -401,7 +401,7 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
     const B2 = await open(port, code, session);
     await until(() => visible(B2, '#game'), 3000, 'resumed');
     assert.strictEqual(txt(B2, '#log'), logBefore);
-    assert(/Friend \(you\) · Ivory/.test(txt(B2, '#who-bottom')));
+    assert(/Friend \(you\) · White/.test(txt(B2, '#who-bottom')));
     await until(() => !/disconnected/.test(txt(A, '#status')), 3000, 'A sees friend back');
     B = B2;
     await until(() => A.document.querySelectorAll('.piece.can').length > 0, 2000, 'A (Ruby) can move now');
@@ -438,7 +438,7 @@ async function test(name, fn) { await fn(); n++; console.log('PASS ' + String(n)
     click(W, '#start');
     assert(visible(W, '#game'));
     assert.strictEqual(W.document.querySelectorAll('.piece').length, 24);
-    assert(/Computer · Ruby/.test(txt(W, '#who-top')));
+    assert(/Computer · Gold/.test(txt(W, '#who-top')));
     assert(visible(W, '#undo') && !visible(W, '#voice-box'));
     W.close();
   });

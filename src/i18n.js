@@ -136,7 +136,7 @@
     [/^, can move$/, function () { return '، يمكنه التحرك'; }],
     [/^(\d+) cards$/, function (m) { return m[1] + ' ورقة'; }]
   ];
-  var WORDS = [[/\bIvory\b/g, 'العاجي'], [/\bRuby\b/g, 'الياقوتي'], [/\(you\)/g, '(أنت)'], [/\bPlayer 1\b/g, 'اللاعب 1'], [/\bPlayer 2\b/g, 'اللاعب 2']];
+  var WORDS = [[/\bIvory\b/g, 'العاجي'], [/\bRuby\b/g, 'الياقوتي'], [/\bGold\b/g, 'الذهبي'], [/\bYellow\b/g, 'الأصفر'], [/\bWhite\b/g, 'الأبيض'], [/\bBlack\b/g, 'الأسود'], [/\bBlue\b/g, 'الأزرق'], [/\bRed\b/g, 'الأحمر'], [/\bGreen\b/g, 'الأخضر'], [/\(you\)/g, '(أنت)'], [/\bPlayer 1\b/g, 'اللاعب 1'], [/\bPlayer 2\b/g, 'اللاعب 2']];
 
   function tr(text) {
     var lead = text.match(/^\s*/)[0], trail = text.match(/\s*$/)[0], core = text.trim();
@@ -145,7 +145,7 @@
     if (out == null) {
       for (var i = 0; i < PAT.length; i++) { var m = PAT[i][0].exec(core); if (m) { var r = PAT[i][1](m); if (r) { out = r; break; } } }
     }
-    if (out == null && /\b(Ivory|Ruby|Player [12])\b/.test(core)) {            // "Ivory · Karim (you)" and the like
+    if (out == null && /\b(Ivory|Ruby|Gold|Yellow|White|Black|Blue|Red|Green|Player [12])\b/.test(core)) {            // "Ivory · Karim (you)" and the like
       var o = core; WORDS.forEach(function (w) { o = o.replace(w[0], w[1]); }); if (o !== core) out = o;
     }
     return out == null ? null : lead + out + trail;
