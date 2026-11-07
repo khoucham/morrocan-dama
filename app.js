@@ -139,7 +139,7 @@ function start(port, host, opts) {
     if (cm && req.method === 'GET') {
       return fs.readFile(path.join(__dirname, 'public', 'cards', cm[1] + '.' + cm[2]), (err, data) => {
         if (err) { res.writeHead(404); return res.end(); }
-        res.writeHead(200, { 'Content-Type': cm[2] === 'jpg' ? 'image/jpeg' : 'image/' + cm[2], 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-cache' });
+        res.writeHead(200, { 'Content-Type': cm[2] === 'jpg' ? 'image/jpeg' : 'image/' + cm[2], 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'public, max-age=604800, immutable' });
         res.end(data);
       });
     }
@@ -544,7 +544,7 @@ function start(port, host, opts) {
       scores: g.scores.slice(0, 2), over: g.over, winner: g.winner, deck: g.deck.length, table: g.table.slice(),
       handN: g.hands.map(h => h.length), hand: seat >= 0 ? g.hands[seat].slice() : [],
       cutCard: (seat >= 0 && seat === g.cutter && g.phase === 'cut') ? g.cutCard : null,
-      stats: ckStats(g), chk: g.chk.slice(0, 2), deals: g.deals, ready: [...room.ready], game: room.game || 'chkobba', ann: g.ann || null, turnSec: room.turnSec || 0, tl: room.deadline ? Math.max(0, room.deadline - Date.now()) : null
+      stats: ckStats(g), chk: g.chk.slice(0, 2), deals: g.deals, ready: [...room.ready], game: room.game || 'chkobba', ann: g.ann || null, decl: (room.game === 'ronda' && seat >= 0 && g.phase === 'play' && RND.canDeclare(g, seat)) ? g.combos[seat].map(c => ({ what: c.what, rank: c.rank })) : null, turnSec: room.turnSec || 0, tl: room.deadline ? Math.max(0, room.deadline - Date.now()) : null
     };
   }
   function ckSnapshot(room, seat, who, reason) {
@@ -622,12 +622,12 @@ function start(port, host, opts) {
     if (g.phase !== 'play' || g.turn !== seat) return fail(ws, 'It is not your turn.', 'illegal');
     const card = Number(m.card), take = Array.isArray(m.take) ? m.take.map(Number) : [];
     if (!Number.isInteger(card) || take.length > 10 || take.some(x => !Number.isInteger(x))) return fail(ws, 'Illegal move.', 'illegal');
-    if (!ckDoPlay(room, seat, card, take)) return fail(ws, 'Illegal move.', 'illegal');
+    if (!ckDoPlay(room, seat, card, take, m.decl === true)) return fail(ws, 'Illegal move.', 'illegal');
   }
-  function ckDoPlay(room, seat, card, take) {
+  function ckDoPlay(room, seat, card, take, decl) {
     const g = room.g;
     let r;
-    try { r = engOf(room).play(g, seat, card, take); } catch (e) { return false; }
+    try { r = engOf(room).play(g, seat, card, take, decl); } catch (e) { return false; }
     room.lastActive = Date.now();
     const ev = { k: 'play', seat, card, took: r.took, chk: r.chkobba, more: r.dealtMore, ended: r.ended, score: r.score || null, flash: r.flash || '', ann: r.ann || null, events: r.events || [] };
     room.log.push({ side: seat, text: card + (r.took.length ? '>' + r.took.join(',') : '') });
@@ -661,7 +661,7 @@ function start(port, host, opts) {
     let pick = null;
     for (const c of hand) { const o = eng.captures(g.table, c); if (o.length) { pick = { card: c, take: o[0] }; break; } }
     if (!pick) pick = { card: hand[Math.floor(Math.random() * hand.length)], take: [] };
-    ckDoPlay(room, seat, pick.card, pick.take);
+    ckDoPlay(room, seat, pick.card, pick.take, true);
   }
   function ckReady(ws) {
     const room = ws.room;

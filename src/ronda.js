@@ -3,7 +3,7 @@
    The sequence order is simply 1,2,...,10 (the 7 is followed by the Sota).
    Seats 0..n-1 are in order of play, the first to play after a deal is the seat after the dealer. With 4 players, seats 0/2 and 1/3 are teams.
    Rules used (pagat.com/fishing/ronda): 3 cards each and 4 on the table; a card must capture an equal card plus the unbroken run above it;
-   Ronda (a pair, 1 point) and Tringa (three of a kind, 5 points) are announced after every deal, the best side scores them all; Caida (matching the card
+   Ronda (a pair, 1 point) and Tringa (three of a kind, 5 points) are announced after every deal, the best side scores them all; Derba (matching the card
    just left by the opponent, 1); Missa (clearing the table, 1); at the end the side with more than 20 cards scores one point per extra card. */
 var Ronda = (function () {
   function rank(id) { return id % 10 + 1; }
@@ -45,10 +45,10 @@ var Ronda = (function () {
     g.hands = []; for (var i = 0; i < g.n; i++) g.hands.push([]);
     for (var k = 0; k < 3; k++) for (i = 1; i <= g.n; i++) g.hands[(g.dealer + i) % g.n].push(g.deck.shift());
     g.table = drawTable(g);
-    g.piles = [[], []]; g.chk = [0, 0]; g.lastCapturer = null; g.lastPlay = null;
+    g.chain = null; g.piles = [[], []]; g.chk = [0, 0]; g.lastCapturer = null; g.lastPlay = null;
     g.awards = []; g.dealPts = [0, 0]; g.cutter = (g.dealer - 1 + g.n) % g.n; g.cutCard = null;
     g.phase = 'play'; g.turn = (g.dealer + 1) % g.n; g.deals++;
-    g.ann = announce(g);
+    dealCombos(g);
     return g;
   }
   function cutDecision(g) { return g; }   // no cut in Ronda
@@ -66,15 +66,27 @@ var Ronda = (function () {
   }
 
   /* After every deal: who holds a Ronda (pair) or Tringa (three alike). The side with the best combination scores all of them. */
-  function announce(g) {
-    var T = g.n === 4 ? 2 : g.n, combos = [], best = [-1, -1], t, i;
+  function comboList(g) {
+    var out = [];
+    for (var s = 0; s < g.n; s++) {
+      var cnt = {}, list = []; g.hands[s].forEach(function (c) { cnt[rank(c)] = (cnt[rank(c)] || 0) + 1; });
+      for (var r in cnt) {
+        if (cnt[r] >= 3) list.push({ what: 'tringa', rank: +r, pts: 5 });
+        else if (cnt[r] === 2) list.push({ what: 'ronda', rank: +r, pts: 1 });
+      }
+      out.push(list);
+    }
+    return out;
+  }
+  /* a Ronda or Tringa only counts when its owner declares it before playing the first card of the hand */
+  function dealCombos(g) { g.combos = comboList(g); g.decl = []; g.played1 = []; g.resolved = false; g.ann = null; }
+  function canDeclare(g, seat) { return g.phase === 'play' && g.turn === seat && g.hands[seat].length === 3 && !g.played1[seat] && !!(g.combos && g.combos[seat] && g.combos[seat].length); }
+  function announce(g, only) {
+    var T = g.n === 4 ? 2 : g.n, combos = [], best = [-1, -1], t, i, cm = only ? g.combos : comboList(g);
     for (t = 0; t < T; t++) combos.push([]);
     for (var s = 0; s < g.n; s++) {
-      var cnt = {}; g.hands[s].forEach(function (c) { cnt[rank(c)] = (cnt[rank(c)] || 0) + 1; });
-      for (var r in cnt) {
-        if (cnt[r] >= 3) combos[teamOf(g, s)].push({ what: 'tringa', rank: +r, pts: 5 });
-        else if (cnt[r] === 2) combos[teamOf(g, s)].push({ what: 'ronda', rank: +r, pts: 1 });
-      }
+      if (only && !only[s]) continue;
+      cm[s].forEach(function (c) { combos[teamOf(g, s)].push(c); });
     }
     function key(c) { return (c.what === 'tringa' ? 100 : 0) + c.rank; }
     for (t = 0; t < T; t++) combos[t].forEach(function (c) { if (key(c) > best[t]) best[t] = key(c); });
@@ -112,26 +124,25 @@ var Ronda = (function () {
 
   function handsEmpty(g) { return g.hands.every(function (h) { return !h.length; }); }
 
-  function play(g, seat, id, take) {
+  function play(g, seat, id, take, declare) {
     if (g.phase !== 'play' || g.turn !== seat) throw new Error('not your turn');
-    var hand = g.hands[seat], hi = hand.indexOf(id);
+    var hand = g.hands[seat], hi = hand.indexOf(id), first = hand.length === 3 && !g.played1[seat];
     if (hi < 0) throw new Error('card not in hand');
     var opts = captures(g.table, id), team = teamOf(g, seat);
     take = take || [];
     var events = [];
     hand.splice(hi, 1);
-    var captured = false;
+    var captured = false, caida = false;
     if (opts.length) {
       var o = opts[0];
       if (o.length !== take.length || !o.every(function (x) { return take.indexOf(x) >= 0; })) { hand.splice(hi, 0, id); throw new Error('illegal capture'); }
       captured = true;
       var lp = g.lastPlay;
-      var caida = !!(lp && lp.stayed && lp.seat !== seat && teamOf(g, lp.seat) !== team && rank(lp.card) === rank(id) && take.indexOf(lp.card) >= 0);
+      caida = !!(lp && lp.stayed && lp.seat !== seat && teamOf(g, lp.seat) !== team && rank(lp.card) === rank(id) && take.indexOf(lp.card) >= 0);
       g.table = g.table.filter(function (t) { return take.indexOf(t) < 0; });
       g.piles[team].push(id); take.forEach(function (t) { g.piles[team].push(t); });
       g.lastCapturer = seat;
       var finalCard = !g.deck.length && handsEmpty(g);
-      if (caida) { award(g, team, 'caida', 1); events.push({ what: 'caida', team: team }); }
       if (!g.table.length && !finalCard) { award(g, team, 'missa', 1); events.push({ what: 'missa', team: team }); }
       g.lastPlay = { seat: seat, card: id, stayed: false };
     } else {
@@ -139,8 +150,23 @@ var Ronda = (function () {
       g.table.push(id);
       g.lastPlay = { seat: seat, card: id, stayed: true };
     }
+    /* Derba / Khamssa: same number, played by the other side right after the previous card.
+       2nd card = Derba (1 point), 3rd = Khamssa (5), 4th = 10. The side playing that card scores it. */
+    var ch = g.chain, sameRank = ch && ch.rank === rank(id) && ch.team !== team, cn = sameRank ? ch.n + 1 : 1;
+    if (cn === 2 && !caida) cn = 1;
+    g.chain = { rank: rank(id), n: cn, team: team };
+    if (cn >= 2) {
+      var dw = cn === 2 ? 'derba' : cn === 3 ? 'khamssa' : 'bachra', dp = cn === 2 ? 1 : cn === 3 ? 5 : 10;
+      award(g, team, dw, dp); events.push({ what: dw, team: team, count: dp });
+    }
     var res = { seat: seat, card: id, took: take.slice(), chkobba: events.length > 0, events: events, dealtMore: false, ended: false, ann: null };
-    res.flash = events.map(function (e) { return e.what === 'caida' ? 'Caida!' : 'Missa!'; }).join(' + ');
+    res.flash = events.map(function (e) { return e.what === 'derba' ? 'Derba!' : e.what === 'khamssa' ? 'Khamssa! +5' : e.what === 'bachra' ? 'Bachra! +10' : 'Missa!'; }).join(' + ');
+    if (first) g.played1[seat] = true;
+    if (first && declare && g.combos && g.combos[seat] && g.combos[seat].length) g.decl[seat] = true;
+    var done = 0; for (var q = 0; q < g.n; q++) if (g.played1[q]) done++;
+    if (!g.resolved && done >= g.n) {                       // everybody has played a first card: the declared combinations are compared now
+      g.resolved = true; res.ann = announce(g, g.decl); g.ann = res.ann;
+    }
     if (g.over) {                                         // somebody reached the target in the middle of the deal
       res.ended = true; g.phase = 'scored'; res.score = { points: g.dealPts.slice(), items: g.awards.slice() };
       return res;
@@ -148,8 +174,8 @@ var Ronda = (function () {
     if (handsEmpty(g)) {
       if (g.deck.length) {
         for (var i = 1; i <= g.n; i++) for (var k = 0; k < 3; k++) g.hands[(g.dealer + i) % g.n].push(g.deck.shift());
-        g.turn = (g.dealer + 1) % g.n; g.lastPlay = null;
-        res.dealtMore = true; res.ann = announce(g); g.ann = res.ann;
+        g.turn = (g.dealer + 1) % g.n; g.lastPlay = null; g.chain = null;
+        res.dealtMore = true; dealCombos(g);
         if (g.over) { res.ended = true; g.phase = 'scored'; res.score = { points: g.dealPts.slice(), items: g.awards.slice() }; }
       } else {
         if (g.table.length && g.lastCapturer != null) { var lt = teamOf(g, g.lastCapturer); g.table.forEach(function (t) { g.piles[lt].push(t); }); g.table = []; }
@@ -174,7 +200,7 @@ var Ronda = (function () {
 
   function nextDeal(g, rnd) { g.dealer = (g.dealer + 1) % g.n; return startDeal(g, rnd); }
 
-  return { newGame: newGame, startDeal: startDeal, cutDecision: cutDecision, captures: captures, play: play, scoreDeal: scoreDeal, nextDeal: nextDeal, announce: announce,
+  return { newGame: newGame, startDeal: startDeal, cutDecision: cutDecision, captures: captures, play: play, scoreDeal: scoreDeal, nextDeal: nextDeal, announce: announce, canDeclare: canDeclare,
     rank: rank, suit: suit, teamOf: teamOf, HAYA: -1 };
 })();
 if (typeof module !== 'undefined') module.exports = Ronda;

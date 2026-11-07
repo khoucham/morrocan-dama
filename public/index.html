@@ -583,6 +583,7 @@
   /* ---------- Chkobba at an online table: same screen as Dama (top buttons, dock, sheets), cards instead of the board ---------- */
   .ck-play { display: flex; flex-direction: column; gap: 6px; min-height: 0; flex: 1 1 auto; }
   .ck-slot, .ck-scoreslot { display: none; }
+  #game[data-kind="ck"] .stage { flex: 1 1 0; min-height: 0; }
   #game[data-kind="ck"] .ck-slot { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
   #game[data-kind="ck"] .ck-scoreslot { display: block; flex: 1 1 auto; min-width: 0; align-self: center; }
   #game[data-kind="ck"] .board, #game[data-kind="ck"] #tag-top, #game[data-kind="ck"] #tag-bottom, #game[data-kind="ck"] .movepill,
@@ -591,7 +592,6 @@
   #game[data-kind="ck"] #offer, #game[data-kind="ck"] #status { display: none !important; }
   #game[data-kind="ck"] #sh-seats { display: none; }
   #game[data-kind="ck"] .ck-play { --cw: clamp(54px, min(23vw, 11.5vh), 96px); }
-  #game[data-kind="ck"] .ck-table .pc { --cw: clamp(54px, min(19vw, 10.5vh), 88px); }
   #game[data-kind="ck"] .seat .fan .pc { --cw: 34px; }
   @media (max-width: 860px) {
     #game[data-kind="ck"] .rail { flex-direction: row; gap: 5px; }
@@ -1030,8 +1030,8 @@
     <ul>
       <li><b>The deal.</b> 3 cards each and 4 on the table. When everyone has played their 3, you get 3 more (nothing is added to the table).</li>
       <li><b>Your turn.</b> Play one card. If a card of the same value is on the table you must take it, and also the cards above it in an unbroken run (a 5 takes 5, 6, 7 if all are there). Otherwise the card stays on the table.</li>
-      <li><b>Ronda and Tringa.</b> After each deal, a pair in a hand is a Ronda (1 point) and three alike a Tringa (5 points). The side with the best one scores all of them. It is announced for you.</li>
-      <li><b>Caida.</b> Take the card the other side has just left, with the same card: 1 point.</li>
+      <li><b>Ronda and Tringa.</b> A pair in your hand is a Ronda (1 point) and three alike a Tringa (5 points). The game asks you at the start of your turn: declare it before you play your first card, or it does not count. Once everybody has played a first card, the side with the best declared one scores all the declared ones.</li>
+      <li><b>Derba, Khamssa and Bachra.</b> Play the same number as the card the other side has just played. The second card is a Derba (1 point), the third a Khamssa (5 points) and the fourth scores 10. The side that plays that card scores it.</li>
       <li><b>Missa.</b> Clear the table: 1 point (not with the very last card).</li>
       <li><b>End of the deal.</b> The last player to take cards takes what is left. Then the side with more than 20 cards scores one point for every card above 20.</li>
       <li><b>Winning.</b> First to 41 points (or 25) wins, even in the middle of a deal.</li>
@@ -1528,7 +1528,7 @@ var Chkobba = (function () {
    The sequence order is simply 1,2,...,10 (the 7 is followed by the Sota).
    Seats 0..n-1 are in order of play, the first to play after a deal is the seat after the dealer. With 4 players, seats 0/2 and 1/3 are teams.
    Rules used (pagat.com/fishing/ronda): 3 cards each and 4 on the table; a card must capture an equal card plus the unbroken run above it;
-   Ronda (a pair, 1 point) and Tringa (three of a kind, 5 points) are announced after every deal, the best side scores them all; Caida (matching the card
+   Ronda (a pair, 1 point) and Tringa (three of a kind, 5 points) are announced after every deal, the best side scores them all; Derba (matching the card
    just left by the opponent, 1); Missa (clearing the table, 1); at the end the side with more than 20 cards scores one point per extra card. */
 var Ronda = (function () {
   function rank(id) { return id % 10 + 1; }
@@ -1570,10 +1570,10 @@ var Ronda = (function () {
     g.hands = []; for (var i = 0; i < g.n; i++) g.hands.push([]);
     for (var k = 0; k < 3; k++) for (i = 1; i <= g.n; i++) g.hands[(g.dealer + i) % g.n].push(g.deck.shift());
     g.table = drawTable(g);
-    g.piles = [[], []]; g.chk = [0, 0]; g.lastCapturer = null; g.lastPlay = null;
+    g.chain = null; g.piles = [[], []]; g.chk = [0, 0]; g.lastCapturer = null; g.lastPlay = null;
     g.awards = []; g.dealPts = [0, 0]; g.cutter = (g.dealer - 1 + g.n) % g.n; g.cutCard = null;
     g.phase = 'play'; g.turn = (g.dealer + 1) % g.n; g.deals++;
-    g.ann = announce(g);
+    dealCombos(g);
     return g;
   }
   function cutDecision(g) { return g; }   // no cut in Ronda
@@ -1591,15 +1591,27 @@ var Ronda = (function () {
   }
 
   /* After every deal: who holds a Ronda (pair) or Tringa (three alike). The side with the best combination scores all of them. */
-  function announce(g) {
-    var T = g.n === 4 ? 2 : g.n, combos = [], best = [-1, -1], t, i;
+  function comboList(g) {
+    var out = [];
+    for (var s = 0; s < g.n; s++) {
+      var cnt = {}, list = []; g.hands[s].forEach(function (c) { cnt[rank(c)] = (cnt[rank(c)] || 0) + 1; });
+      for (var r in cnt) {
+        if (cnt[r] >= 3) list.push({ what: 'tringa', rank: +r, pts: 5 });
+        else if (cnt[r] === 2) list.push({ what: 'ronda', rank: +r, pts: 1 });
+      }
+      out.push(list);
+    }
+    return out;
+  }
+  /* a Ronda or Tringa only counts when its owner declares it before playing the first card of the hand */
+  function dealCombos(g) { g.combos = comboList(g); g.decl = []; g.played1 = []; g.resolved = false; g.ann = null; }
+  function canDeclare(g, seat) { return g.phase === 'play' && g.turn === seat && g.hands[seat].length === 3 && !g.played1[seat] && !!(g.combos && g.combos[seat] && g.combos[seat].length); }
+  function announce(g, only) {
+    var T = g.n === 4 ? 2 : g.n, combos = [], best = [-1, -1], t, i, cm = only ? g.combos : comboList(g);
     for (t = 0; t < T; t++) combos.push([]);
     for (var s = 0; s < g.n; s++) {
-      var cnt = {}; g.hands[s].forEach(function (c) { cnt[rank(c)] = (cnt[rank(c)] || 0) + 1; });
-      for (var r in cnt) {
-        if (cnt[r] >= 3) combos[teamOf(g, s)].push({ what: 'tringa', rank: +r, pts: 5 });
-        else if (cnt[r] === 2) combos[teamOf(g, s)].push({ what: 'ronda', rank: +r, pts: 1 });
-      }
+      if (only && !only[s]) continue;
+      cm[s].forEach(function (c) { combos[teamOf(g, s)].push(c); });
     }
     function key(c) { return (c.what === 'tringa' ? 100 : 0) + c.rank; }
     for (t = 0; t < T; t++) combos[t].forEach(function (c) { if (key(c) > best[t]) best[t] = key(c); });
@@ -1637,26 +1649,25 @@ var Ronda = (function () {
 
   function handsEmpty(g) { return g.hands.every(function (h) { return !h.length; }); }
 
-  function play(g, seat, id, take) {
+  function play(g, seat, id, take, declare) {
     if (g.phase !== 'play' || g.turn !== seat) throw new Error('not your turn');
-    var hand = g.hands[seat], hi = hand.indexOf(id);
+    var hand = g.hands[seat], hi = hand.indexOf(id), first = hand.length === 3 && !g.played1[seat];
     if (hi < 0) throw new Error('card not in hand');
     var opts = captures(g.table, id), team = teamOf(g, seat);
     take = take || [];
     var events = [];
     hand.splice(hi, 1);
-    var captured = false;
+    var captured = false, caida = false;
     if (opts.length) {
       var o = opts[0];
       if (o.length !== take.length || !o.every(function (x) { return take.indexOf(x) >= 0; })) { hand.splice(hi, 0, id); throw new Error('illegal capture'); }
       captured = true;
       var lp = g.lastPlay;
-      var caida = !!(lp && lp.stayed && lp.seat !== seat && teamOf(g, lp.seat) !== team && rank(lp.card) === rank(id) && take.indexOf(lp.card) >= 0);
+      caida = !!(lp && lp.stayed && lp.seat !== seat && teamOf(g, lp.seat) !== team && rank(lp.card) === rank(id) && take.indexOf(lp.card) >= 0);
       g.table = g.table.filter(function (t) { return take.indexOf(t) < 0; });
       g.piles[team].push(id); take.forEach(function (t) { g.piles[team].push(t); });
       g.lastCapturer = seat;
       var finalCard = !g.deck.length && handsEmpty(g);
-      if (caida) { award(g, team, 'caida', 1); events.push({ what: 'caida', team: team }); }
       if (!g.table.length && !finalCard) { award(g, team, 'missa', 1); events.push({ what: 'missa', team: team }); }
       g.lastPlay = { seat: seat, card: id, stayed: false };
     } else {
@@ -1664,8 +1675,23 @@ var Ronda = (function () {
       g.table.push(id);
       g.lastPlay = { seat: seat, card: id, stayed: true };
     }
+    /* Derba / Khamssa: same number, played by the other side right after the previous card.
+       2nd card = Derba (1 point), 3rd = Khamssa (5), 4th = 10. The side playing that card scores it. */
+    var ch = g.chain, sameRank = ch && ch.rank === rank(id) && ch.team !== team, cn = sameRank ? ch.n + 1 : 1;
+    if (cn === 2 && !caida) cn = 1;
+    g.chain = { rank: rank(id), n: cn, team: team };
+    if (cn >= 2) {
+      var dw = cn === 2 ? 'derba' : cn === 3 ? 'khamssa' : 'bachra', dp = cn === 2 ? 1 : cn === 3 ? 5 : 10;
+      award(g, team, dw, dp); events.push({ what: dw, team: team, count: dp });
+    }
     var res = { seat: seat, card: id, took: take.slice(), chkobba: events.length > 0, events: events, dealtMore: false, ended: false, ann: null };
-    res.flash = events.map(function (e) { return e.what === 'caida' ? 'Caida!' : 'Missa!'; }).join(' + ');
+    res.flash = events.map(function (e) { return e.what === 'derba' ? 'Derba!' : e.what === 'khamssa' ? 'Khamssa! +5' : e.what === 'bachra' ? 'Bachra! +10' : 'Missa!'; }).join(' + ');
+    if (first) g.played1[seat] = true;
+    if (first && declare && g.combos && g.combos[seat] && g.combos[seat].length) g.decl[seat] = true;
+    var done = 0; for (var q = 0; q < g.n; q++) if (g.played1[q]) done++;
+    if (!g.resolved && done >= g.n) {                       // everybody has played a first card: the declared combinations are compared now
+      g.resolved = true; res.ann = announce(g, g.decl); g.ann = res.ann;
+    }
     if (g.over) {                                         // somebody reached the target in the middle of the deal
       res.ended = true; g.phase = 'scored'; res.score = { points: g.dealPts.slice(), items: g.awards.slice() };
       return res;
@@ -1673,8 +1699,8 @@ var Ronda = (function () {
     if (handsEmpty(g)) {
       if (g.deck.length) {
         for (var i = 1; i <= g.n; i++) for (var k = 0; k < 3; k++) g.hands[(g.dealer + i) % g.n].push(g.deck.shift());
-        g.turn = (g.dealer + 1) % g.n; g.lastPlay = null;
-        res.dealtMore = true; res.ann = announce(g); g.ann = res.ann;
+        g.turn = (g.dealer + 1) % g.n; g.lastPlay = null; g.chain = null;
+        res.dealtMore = true; dealCombos(g);
         if (g.over) { res.ended = true; g.phase = 'scored'; res.score = { points: g.dealPts.slice(), items: g.awards.slice() }; }
       } else {
         if (g.table.length && g.lastCapturer != null) { var lt = teamOf(g, g.lastCapturer); g.table.forEach(function (t) { g.piles[lt].push(t); }); g.table = []; }
@@ -1699,7 +1725,7 @@ var Ronda = (function () {
 
   function nextDeal(g, rnd) { g.dealer = (g.dealer + 1) % g.n; return startDeal(g, rnd); }
 
-  return { newGame: newGame, startDeal: startDeal, cutDecision: cutDecision, captures: captures, play: play, scoreDeal: scoreDeal, nextDeal: nextDeal, announce: announce,
+  return { newGame: newGame, startDeal: startDeal, cutDecision: cutDecision, captures: captures, play: play, scoreDeal: scoreDeal, nextDeal: nextDeal, announce: announce, canDeclare: canDeclare,
     rank: rank, suit: suit, teamOf: teamOf, HAYA: -1 };
 })();
 
@@ -3192,8 +3218,27 @@ const DAMA_PUZZLES = [
       if (deferred) {
         deferred.prompt();
         deferred.userChoice.then(function () { deferred = null; box.hidden = true; }, function () {});
-      } else { help.textContent = howTo(); help.hidden = false; }
+      } else { help.textContent = howTo(); help.hidden = false; showHow(); }
     });
+    /* iPhone cannot install from a button, so the button opens a clear step-by-step card (with a copy-link button for in-app browsers) */
+    function showHow() {
+      var old = document.getElementById('how-install'); if (old) old.remove();
+      var d = document.createElement('div'); d.id = 'how-install';
+      d.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
+      var steps = ios ? (inApp ? ['Tap the ⋯ or compass button of this app', 'Choose “Open in Safari”', 'In Safari tap Share (square with an arrow)', 'Tap “Add to Home Screen”']
+                               : ['Tap the Share button (square with an arrow) at the bottom of Safari', 'Scroll down and tap “Add to Home Screen”', 'Tap “Add”'])
+                  : android ? (inApp ? ['Tap ⋮ and choose “Open in Chrome”', 'In Chrome tap ⋮ again', 'Tap “Install app”'] : ['Tap the ⋮ menu in Chrome', 'Tap “Install app” or “Add to Home screen”'])
+                  : ['Click the install icon at the right end of the address bar (Chrome or Edge)'];
+      d.innerHTML = '<div style="background:#fff;color:#14172b;border-radius:16px;max-width:340px;width:100%;padding:20px;font:16px/1.4 system-ui,sans-serif"><h3 style="margin:0 0 10px;font-size:18px">Install the app</h3><ol style="margin:0 0 14px 20px;padding:0">'
+        + steps.map(function (t) { return '<li style="margin:6px 0">' + t + '</li>'; }).join('') + '</ol>'
+        + '<div style="display:flex;gap:8px"><button type="button" id="how-copy" style="flex:1;padding:12px;border-radius:10px;border:1px solid #bbb;background:#f3f3f3;font-size:15px">Copy link</button><button type="button" id="how-ok" style="flex:1;padding:12px;border-radius:10px;border:0;background:#1B2A8F;color:#fff;font-size:15px">OK</button></div></div>';
+      document.body.appendChild(d);
+      d.addEventListener('click', function (e) { if (e.target === d || e.target.id === 'how-ok') d.remove(); });
+      d.querySelector('#how-copy').addEventListener('click', function (e) {
+        var b = e.target, u = location.origin + '/';
+        try { navigator.clipboard.writeText(u).then(function () { b.textContent = 'Copied ✓'; }, function () { b.textContent = u; }); } catch (x) { b.textContent = u; }
+      });
+    }
     window.addEventListener('appinstalled', function () { box.hidden = true; });
   })();
 
@@ -3331,6 +3376,17 @@ const DAMA_PUZZLES = [
     return '<' + tag + (tag === 'button' ? ' type="button"' : '') + ' class="pc ' + col + (cls ? ' ' + cls : '') + '" data-id="' + id + '" aria-label="' + cardName(id) + '">' + corner + face + '</' + tag + '>';
   }
   (function () { var L = ['K', 'Q', 'J'], S = 'dhsc'; window.__ckImgs = []; for (var a = 0; a < 3; a++) for (var b = 0; b < 4; b++) { var im = new Image(); im.src = cardSrc(L[a] + '-' + S[b]); window.__ckImgs.push(im); } })();
+  /* keep every card picture in memory as a blob: a card that is drawn again never has to be fetched or decoded from the network again (this was the flashing) */
+  (function () {
+    if (!window.fetch || !window.URL || !URL.createObjectURL) return;
+    window.__cardSrc = window.__cardSrc || {};
+    var names = [], i, j; for (i = 0; i < 40; i++) names.push('S-' + (i < 10 ? '0' : '') + i);
+    ['K', 'Q', 'J'].forEach(function (l) { 'dhsc'.split('').forEach(function (su) { names.push(l + '-' + su); }); });
+    names.forEach(function (n) {
+      var url = 'cards/' + n + (n.charAt(0) === 'S' ? '.webp' : '.png');
+      fetch(url).then(function (r) { return r.ok ? r.blob() : null; }).then(function (bl) { if (bl) window.__cardSrc[n] = URL.createObjectURL(bl); }).catch(function () {});
+    });
+  })();
   function spCardHtml(id, cls, tag) {
     tag = tag || 'button';
     var src = cardSrc('S-' + (id < 10 ? '0' : '') + id);
@@ -3415,6 +3471,24 @@ const DAMA_PUZZLES = [
     if (CKG === 'ronda') ckAnnounceMsg(CK.g.ann);
   }
   function ckLater(fn, ms) { var t = CK.token; setTimeout(function () { if (CK && CK.token === t) fn(); }, ckWait(ms)); }
+  function ckAskDecl(off) {
+    var old = document.getElementById('ck-decl'); if (old) old.remove();
+    var d = document.createElement('div'); d.id = 'ck-decl';
+    d.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px';
+    var lines = off.slice().sort(function (a, b) { return (b.what === 'tringa') - (a.what === 'tringa') || b.rank - a.rank; }).map(function (c) {
+      return c.what === 'tringa' ? 'Tringa: three ' + spNum(c.rank) + 's (+5)' : 'Ronda: a pair of ' + spNum(c.rank) + 's (+1)';
+    });
+    d.innerHTML = '<div style="background:#124a3a;color:#f6efdc;border:2px solid #c48f22;border-radius:16px;max-width:340px;width:100%;padding:20px;font:16px/1.4 system-ui,sans-serif;text-align:center">'
+      + '<h3 style="margin:0 0 8px;font-size:20px;color:#f0c24b">You have a ' + (off.some(function (c) { return c.what === 'tringa'; }) ? 'Tringa' : 'Ronda') + '!</h3>'
+      + lines.map(function (t) { return '<p style="margin:4px 0">' + esc(t) + '</p>'; }).join('')
+      + '<p style="margin:10px 0 14px;font-size:13px;opacity:.8">Choose now, before you play your first card. If you don’t declare, it will not count.</p>'
+      + '<div style="display:flex;gap:8px"><button type="button" id="ck-decl-no" style="flex:1;padding:12px;border-radius:10px;border:1px solid #c48f22;background:transparent;color:#f0c24b;font-size:16px">Don’t declare</button>'
+      + '<button type="button" id="ck-decl-yes" style="flex:1;padding:12px;border-radius:10px;border:0;background:linear-gradient(#f0c24b,#c48f22);color:#2a1d00;font-weight:700;font-size:16px">Declare</button></div></div>';
+    document.body.appendChild(d);
+    function done(yes) { d.remove(); if (!CK) return; CK.declare = yes; CK.msg = yes ? 'Declared! It scores after everyone has played a first card. Play a card.' : 'Your turn.'; if (yes) sfx.play('king', 0.4); ckRender(); }
+    d.querySelector('#ck-decl-yes').addEventListener('click', function () { done(true); });
+    d.querySelector('#ck-decl-no').addEventListener('click', function () { done(false); });
+  }
   function ckAnnounceMsg(ann) {
     if (!ann || !ann.items.length) return '';
     var m = ann.items.map(function (it) { var t = CK.online ? ckoTeam(it.team) : it.team; return (it.kinds === 'tringa' ? 'Tringa! ' : 'Ronda! ') + ckTeamShort(t) + ' +' + it.count; }).join(' · ');
@@ -3467,7 +3541,8 @@ const DAMA_PUZZLES = [
     else { CK.busy = true; ckRender(); ckLater(function () { var m = aiMove(g, g.turn); ckDo(g.turn, m.card, m.take); }, 1000); }
   }
   function ckDo(seat, card, take) {
-    var g = CK.g, before = g.table.slice(), r = CKE.play(g, seat, card, take);
+    var g = CK.g, before = g.table.slice(), r = CKE.play(g, seat, card, take, seat === 0 ? CK.declare === true : true);
+    if (seat === 0) { CK.declare = false; CK.asked = false; }
     ckShowMove(seat, card, take, r, before);
   }
   function ckShowMove(seat, card, take, r, before) {
@@ -3517,12 +3592,12 @@ const DAMA_PUZZLES = [
   function ckConfirm() {
     if (CK.busy || !ckReady()) return;
     CK.busy = true;
-    if (CK.online) { netSend({ t: 'ckplay', card: CK.sel, take: CK.pick.slice() }); ckRender(); return; }
+    if (CK.online) { netSend({ t: 'ckplay', card: CK.sel, take: CK.pick.slice(), decl: CK.declare === true }); CK.declare = false; ckRender(); return; }
     ckDo(0, CK.sel, CK.pick.slice());
   }
 
   /* ----- the end of a deal and of the game ----- */
-  var ITEM = { cards: 'Most cards', coins: 'Most diamonds', sevens: 'Most sevens', haya: '7 of diamonds', chkobba: 'Chkobba', ronda: 'Ronda', tringa: 'Tringa', caida: 'Caida', missa: 'Missa', cardsover: 'Cards over 20' };
+  var ITEM = { cards: 'Most cards', coins: 'Most diamonds', sevens: 'Most sevens', haya: '7 of diamonds', chkobba: 'Chkobba', ronda: 'Ronda', tringa: 'Tringa', derba: 'Derba', khamssa: 'Khamssa', bachra: 'Bachra (10)', missa: 'Missa', cardsover: 'Cards over 20' };
   function ckShowDeal(r) {
     var g = CK.g, rows = '';
     var items = r && r.score ? r.score.items : [];
@@ -3570,10 +3645,13 @@ const DAMA_PUZZLES = [
     box.innerHTML = '<span class="nm">' + ckChip(pe) + '<span>' + esc(CK.names[seat]) + (g.dealer === seat && g.phase !== 'wait' ? ' <em>D</em>' : '') + '</span></span><span class="fan">' + backs(n) + '</span>';
   }
   /* make the cards on the table as large as they can be while all of them stay visible */
+  /* only touch the page when the cards really changed: a card picture that is thrown away and drawn again blinks */
+  function setHtml(el, html) { if (el.__h === html && el.firstChild !== null || (el.__h === html && html === '')) return; el.__h = html; el.innerHTML = html; }
   function ckFit() {
     var t = $('#ck-table'), n = t.querySelectorAll('.pc').length;
     if (!n || !t.clientWidth) { t.style.removeProperty('--cw'); return; }
-    var w = t.clientWidth - 18, h = t.clientHeight - 26, max = Math.min(78, Math.round(window.innerHeight * 0.1)), cw;
+    t.style.setProperty('--cw', '30px');   // measure with tiny cards: otherwise the table is as tall as its own cards and never shrinks
+    var w = t.clientWidth - 18, h = t.clientHeight - 26, max = Math.min(88, Math.round(window.innerHeight * 0.115)), cw;
     for (cw = Math.max(max, 40); cw > 30; cw -= 2) {
       var per = Math.max(1, Math.floor((w + 8) / (cw + 8))), rows = Math.ceil(n / per);
       if (rows * (cw * 1.46 + 8) - 8 <= h) break;
@@ -3601,12 +3679,11 @@ const DAMA_PUZZLES = [
     var picks = CK.pick, optIds = [];
     CK.opts.forEach(function (o) { o.forEach(function (t) { if (optIds.indexOf(t) < 0) optIds.push(t); }); });
     var sh = CK.show, shown = sh ? sh.table : g.table;
-    $('#ck-table').innerHTML = shown.length ? '<div class="cards">' + shown.map(function (id) {
+    setHtml($('#ck-table'), shown.length ? '<div class="cards">' + shown.map(function (id) {
       if (sh) return cardHtml(id, id === sh.played ? (sh.took.length ? 'played' : 'landed') : sh.took.indexOf(id) >= 0 ? 'took' : '');
       return cardHtml(id, (optIds.indexOf(id) >= 0 ? 'opt ' : '') + (picks.indexOf(id) >= 0 ? 'picked' : ''));
-    }).join('') + '</div>' : '<span class="empty">The table is empty</span>';
-    ckFit();
-    $('#ck-hand').innerHTML = CK.watch ? backs(g.hands[0].length) : g.hands[0].map(function (id) { return cardHtml(id, (CK.sel === id ? 'sel' : '') + (CK.busy || g.turn !== 0 ? ' wait' : '')); }).join('');
+    }).join('') + '</div>' : '<span class="empty">The table is empty</span>');
+    setHtml($('#ck-hand'), CK.watch ? backs(g.hands[0].length) : g.hands[0].map(function (id) { return cardHtml(id, (CK.sel === id ? 'sel' : '') + (CK.busy || g.turn !== 0 ? ' wait' : '')); }).join(''));
     var meBox = $('#ck-me');
     if (CK.online) {
       var pe0 = CK.people ? CK.people[0] : null;
@@ -3618,7 +3695,7 @@ const DAMA_PUZZLES = [
     // last play, shown as small cards
     var lp = CK.last, lh = '';
     if (lp) lh = cardHtml(lp.card, 'mini', 'div') + (lp.took.length ? '<span class="arrow">→</span>' + lp.took.map(function (t) { return cardHtml(t, 'mini', 'div'); }).join('') : '<span class="arrow">↓</span>');
-    $('#ck-last').innerHTML = lh;
+    setHtml($('#ck-last'), lh);
     $('#ck-status').textContent = CK.msg;
     $('#ck-chk').hidden = !(lp && lp.chk && CK.show); if (lp && lp.flash) $('#ck-chk').textContent = lp.flash;
     $('#ck-haya').hidden = !(lp && lp.haya && CK.show);
@@ -3632,6 +3709,12 @@ const DAMA_PUZZLES = [
     else { label = 'Choose cards to take'; act.disabled = true; }
     act.textContent = label;
     act.classList.toggle('primary', !act.disabled);
+    if (CKG === 'ronda') {                                   // a Ronda or Tringa is only scored if the player declares it before the first card of the hand
+      var off = CK.watch ? null : CK.online ? CK.declOffer : (g.phase === 'play' && CKE.canDeclare(g, 0) ? g.combos[0] : null);
+      if (!off) CK.asked = false;
+      else if (!CK.asked && !CK.busy && g.phase === 'play' && g.turn === 0) { CK.asked = true; ckAskDecl(off); }
+    }
+    ckFit();   // last, so the hand, the status line and the bar already take their room
   }
 
   /* ----- wiring ----- */
@@ -3718,6 +3801,7 @@ const DAMA_PUZZLES = [
       if (i === ms && !CK.watch) h = (v.hand || []).slice(); else { h = []; for (var k = 0; k < v.handN[i]; k++) h.push(-1); }
       hands[rot(i)] = h;
     }
+    CK.declOffer = v.decl || null;
     CK.turnSec = v.turnSec || 0; CK.deadline = v.tl != null ? Date.now() + v.tl : null;
     var deck = []; for (i = 0; i < v.deck; i++) deck.push(-1);
     function two(a) { return swap ? [a[1], a[0]] : [a[0], a[1]]; }

@@ -583,6 +583,7 @@
   /* ---------- Chkobba at an online table: same screen as Dama (top buttons, dock, sheets), cards instead of the board ---------- */
   .ck-play { display: flex; flex-direction: column; gap: 6px; min-height: 0; flex: 1 1 auto; }
   .ck-slot, .ck-scoreslot { display: none; }
+  #game[data-kind="ck"] .stage { flex: 1 1 0; min-height: 0; }
   #game[data-kind="ck"] .ck-slot { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
   #game[data-kind="ck"] .ck-scoreslot { display: block; flex: 1 1 auto; min-width: 0; align-self: center; }
   #game[data-kind="ck"] .board, #game[data-kind="ck"] #tag-top, #game[data-kind="ck"] #tag-bottom, #game[data-kind="ck"] .movepill,
@@ -591,7 +592,6 @@
   #game[data-kind="ck"] #offer, #game[data-kind="ck"] #status { display: none !important; }
   #game[data-kind="ck"] #sh-seats { display: none; }
   #game[data-kind="ck"] .ck-play { --cw: clamp(54px, min(23vw, 11.5vh), 96px); }
-  #game[data-kind="ck"] .ck-table .pc { --cw: clamp(54px, min(19vw, 10.5vh), 88px); }
   #game[data-kind="ck"] .seat .fan .pc { --cw: 34px; }
   @media (max-width: 860px) {
     #game[data-kind="ck"] .rail { flex-direction: row; gap: 5px; }
@@ -1030,8 +1030,8 @@
     <ul>
       <li><b>The deal.</b> 3 cards each and 4 on the table. When everyone has played their 3, you get 3 more (nothing is added to the table).</li>
       <li><b>Your turn.</b> Play one card. If a card of the same value is on the table you must take it, and also the cards above it in an unbroken run (a 5 takes 5, 6, 7 if all are there). Otherwise the card stays on the table.</li>
-      <li><b>Ronda and Tringa.</b> After each deal, a pair in a hand is a Ronda (1 point) and three alike a Tringa (5 points). The side with the best one scores all of them. It is announced for you.</li>
-      <li><b>Caida.</b> Take the card the other side has just left, with the same card: 1 point.</li>
+      <li><b>Ronda and Tringa.</b> A pair in your hand is a Ronda (1 point) and three alike a Tringa (5 points). The game asks you at the start of your turn: declare it before you play your first card, or it does not count. Once everybody has played a first card, the side with the best declared one scores all the declared ones.</li>
+      <li><b>Derba, Khamssa and Bachra.</b> Play the same number as the card the other side has just played. The second card is a Derba (1 point), the third a Khamssa (5 points) and the fourth scores 10. The side that plays that card scores it.</li>
       <li><b>Missa.</b> Clear the table: 1 point (not with the very last card).</li>
       <li><b>End of the deal.</b> The last player to take cards takes what is left. Then the side with more than 20 cards scores one point for every card above 20.</li>
       <li><b>Winning.</b> First to 41 points (or 25) wins, even in the middle of a deal.</li>
@@ -2568,8 +2568,27 @@
       if (deferred) {
         deferred.prompt();
         deferred.userChoice.then(function () { deferred = null; box.hidden = true; }, function () {});
-      } else { help.textContent = howTo(); help.hidden = false; }
+      } else { help.textContent = howTo(); help.hidden = false; showHow(); }
     });
+    /* iPhone cannot install from a button, so the button opens a clear step-by-step card (with a copy-link button for in-app browsers) */
+    function showHow() {
+      var old = document.getElementById('how-install'); if (old) old.remove();
+      var d = document.createElement('div'); d.id = 'how-install';
+      d.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
+      var steps = ios ? (inApp ? ['Tap the ⋯ or compass button of this app', 'Choose “Open in Safari”', 'In Safari tap Share (square with an arrow)', 'Tap “Add to Home Screen”']
+                               : ['Tap the Share button (square with an arrow) at the bottom of Safari', 'Scroll down and tap “Add to Home Screen”', 'Tap “Add”'])
+                  : android ? (inApp ? ['Tap ⋮ and choose “Open in Chrome”', 'In Chrome tap ⋮ again', 'Tap “Install app”'] : ['Tap the ⋮ menu in Chrome', 'Tap “Install app” or “Add to Home screen”'])
+                  : ['Click the install icon at the right end of the address bar (Chrome or Edge)'];
+      d.innerHTML = '<div style="background:#fff;color:#14172b;border-radius:16px;max-width:340px;width:100%;padding:20px;font:16px/1.4 system-ui,sans-serif"><h3 style="margin:0 0 10px;font-size:18px">Install the app</h3><ol style="margin:0 0 14px 20px;padding:0">'
+        + steps.map(function (t) { return '<li style="margin:6px 0">' + t + '</li>'; }).join('') + '</ol>'
+        + '<div style="display:flex;gap:8px"><button type="button" id="how-copy" style="flex:1;padding:12px;border-radius:10px;border:1px solid #bbb;background:#f3f3f3;font-size:15px">Copy link</button><button type="button" id="how-ok" style="flex:1;padding:12px;border-radius:10px;border:0;background:#1B2A8F;color:#fff;font-size:15px">OK</button></div></div>';
+      document.body.appendChild(d);
+      d.addEventListener('click', function (e) { if (e.target === d || e.target.id === 'how-ok') d.remove(); });
+      d.querySelector('#how-copy').addEventListener('click', function (e) {
+        var b = e.target, u = location.origin + '/';
+        try { navigator.clipboard.writeText(u).then(function () { b.textContent = 'Copied ✓'; }, function () { b.textContent = u; }); } catch (x) { b.textContent = u; }
+      });
+    }
     window.addEventListener('appinstalled', function () { box.hidden = true; });
   })();
 

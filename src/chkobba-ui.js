@@ -63,6 +63,17 @@
     return '<' + tag + (tag === 'button' ? ' type="button"' : '') + ' class="pc ' + col + (cls ? ' ' + cls : '') + '" data-id="' + id + '" aria-label="' + cardName(id) + '">' + corner + face + '</' + tag + '>';
   }
   (function () { var L = ['K', 'Q', 'J'], S = 'dhsc'; window.__ckImgs = []; for (var a = 0; a < 3; a++) for (var b = 0; b < 4; b++) { var im = new Image(); im.src = cardSrc(L[a] + '-' + S[b]); window.__ckImgs.push(im); } })();
+  /* keep every card picture in memory as a blob: a card that is drawn again never has to be fetched or decoded from the network again (this was the flashing) */
+  (function () {
+    if (!window.fetch || !window.URL || !URL.createObjectURL) return;
+    window.__cardSrc = window.__cardSrc || {};
+    var names = [], i, j; for (i = 0; i < 40; i++) names.push('S-' + (i < 10 ? '0' : '') + i);
+    ['K', 'Q', 'J'].forEach(function (l) { 'dhsc'.split('').forEach(function (su) { names.push(l + '-' + su); }); });
+    names.forEach(function (n) {
+      var url = 'cards/' + n + (n.charAt(0) === 'S' ? '.webp' : '.png');
+      fetch(url).then(function (r) { return r.ok ? r.blob() : null; }).then(function (bl) { if (bl) window.__cardSrc[n] = URL.createObjectURL(bl); }).catch(function () {});
+    });
+  })();
   function spCardHtml(id, cls, tag) {
     tag = tag || 'button';
     var src = cardSrc('S-' + (id < 10 ? '0' : '') + id);
@@ -147,6 +158,24 @@
     if (CKG === 'ronda') ckAnnounceMsg(CK.g.ann);
   }
   function ckLater(fn, ms) { var t = CK.token; setTimeout(function () { if (CK && CK.token === t) fn(); }, ckWait(ms)); }
+  function ckAskDecl(off) {
+    var old = document.getElementById('ck-decl'); if (old) old.remove();
+    var d = document.createElement('div'); d.id = 'ck-decl';
+    d.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px';
+    var lines = off.slice().sort(function (a, b) { return (b.what === 'tringa') - (a.what === 'tringa') || b.rank - a.rank; }).map(function (c) {
+      return c.what === 'tringa' ? 'Tringa: three ' + spNum(c.rank) + 's (+5)' : 'Ronda: a pair of ' + spNum(c.rank) + 's (+1)';
+    });
+    d.innerHTML = '<div style="background:#124a3a;color:#f6efdc;border:2px solid #c48f22;border-radius:16px;max-width:340px;width:100%;padding:20px;font:16px/1.4 system-ui,sans-serif;text-align:center">'
+      + '<h3 style="margin:0 0 8px;font-size:20px;color:#f0c24b">You have a ' + (off.some(function (c) { return c.what === 'tringa'; }) ? 'Tringa' : 'Ronda') + '!</h3>'
+      + lines.map(function (t) { return '<p style="margin:4px 0">' + esc(t) + '</p>'; }).join('')
+      + '<p style="margin:10px 0 14px;font-size:13px;opacity:.8">Choose now, before you play your first card. If you don’t declare, it will not count.</p>'
+      + '<div style="display:flex;gap:8px"><button type="button" id="ck-decl-no" style="flex:1;padding:12px;border-radius:10px;border:1px solid #c48f22;background:transparent;color:#f0c24b;font-size:16px">Don’t declare</button>'
+      + '<button type="button" id="ck-decl-yes" style="flex:1;padding:12px;border-radius:10px;border:0;background:linear-gradient(#f0c24b,#c48f22);color:#2a1d00;font-weight:700;font-size:16px">Declare</button></div></div>';
+    document.body.appendChild(d);
+    function done(yes) { d.remove(); if (!CK) return; CK.declare = yes; CK.msg = yes ? 'Declared! It scores after everyone has played a first card. Play a card.' : 'Your turn.'; if (yes) sfx.play('king', 0.4); ckRender(); }
+    d.querySelector('#ck-decl-yes').addEventListener('click', function () { done(true); });
+    d.querySelector('#ck-decl-no').addEventListener('click', function () { done(false); });
+  }
   function ckAnnounceMsg(ann) {
     if (!ann || !ann.items.length) return '';
     var m = ann.items.map(function (it) { var t = CK.online ? ckoTeam(it.team) : it.team; return (it.kinds === 'tringa' ? 'Tringa! ' : 'Ronda! ') + ckTeamShort(t) + ' +' + it.count; }).join(' · ');
@@ -199,7 +228,8 @@
     else { CK.busy = true; ckRender(); ckLater(function () { var m = aiMove(g, g.turn); ckDo(g.turn, m.card, m.take); }, 1000); }
   }
   function ckDo(seat, card, take) {
-    var g = CK.g, before = g.table.slice(), r = CKE.play(g, seat, card, take);
+    var g = CK.g, before = g.table.slice(), r = CKE.play(g, seat, card, take, seat === 0 ? CK.declare === true : true);
+    if (seat === 0) { CK.declare = false; CK.asked = false; }
     ckShowMove(seat, card, take, r, before);
   }
   function ckShowMove(seat, card, take, r, before) {
@@ -249,12 +279,12 @@
   function ckConfirm() {
     if (CK.busy || !ckReady()) return;
     CK.busy = true;
-    if (CK.online) { netSend({ t: 'ckplay', card: CK.sel, take: CK.pick.slice() }); ckRender(); return; }
+    if (CK.online) { netSend({ t: 'ckplay', card: CK.sel, take: CK.pick.slice(), decl: CK.declare === true }); CK.declare = false; ckRender(); return; }
     ckDo(0, CK.sel, CK.pick.slice());
   }
 
   /* ----- the end of a deal and of the game ----- */
-  var ITEM = { cards: 'Most cards', coins: 'Most diamonds', sevens: 'Most sevens', haya: '7 of diamonds', chkobba: 'Chkobba', ronda: 'Ronda', tringa: 'Tringa', caida: 'Caida', missa: 'Missa', cardsover: 'Cards over 20' };
+  var ITEM = { cards: 'Most cards', coins: 'Most diamonds', sevens: 'Most sevens', haya: '7 of diamonds', chkobba: 'Chkobba', ronda: 'Ronda', tringa: 'Tringa', derba: 'Derba', khamssa: 'Khamssa', bachra: 'Bachra (10)', missa: 'Missa', cardsover: 'Cards over 20' };
   function ckShowDeal(r) {
     var g = CK.g, rows = '';
     var items = r && r.score ? r.score.items : [];
@@ -302,10 +332,13 @@
     box.innerHTML = '<span class="nm">' + ckChip(pe) + '<span>' + esc(CK.names[seat]) + (g.dealer === seat && g.phase !== 'wait' ? ' <em>D</em>' : '') + '</span></span><span class="fan">' + backs(n) + '</span>';
   }
   /* make the cards on the table as large as they can be while all of them stay visible */
+  /* only touch the page when the cards really changed: a card picture that is thrown away and drawn again blinks */
+  function setHtml(el, html) { if (el.__h === html && el.firstChild !== null || (el.__h === html && html === '')) return; el.__h = html; el.innerHTML = html; }
   function ckFit() {
     var t = $('#ck-table'), n = t.querySelectorAll('.pc').length;
     if (!n || !t.clientWidth) { t.style.removeProperty('--cw'); return; }
-    var w = t.clientWidth - 18, h = t.clientHeight - 26, max = Math.min(78, Math.round(window.innerHeight * 0.1)), cw;
+    t.style.setProperty('--cw', '30px');   // measure with tiny cards: otherwise the table is as tall as its own cards and never shrinks
+    var w = t.clientWidth - 18, h = t.clientHeight - 26, max = Math.min(88, Math.round(window.innerHeight * 0.115)), cw;
     for (cw = Math.max(max, 40); cw > 30; cw -= 2) {
       var per = Math.max(1, Math.floor((w + 8) / (cw + 8))), rows = Math.ceil(n / per);
       if (rows * (cw * 1.46 + 8) - 8 <= h) break;
@@ -333,12 +366,11 @@
     var picks = CK.pick, optIds = [];
     CK.opts.forEach(function (o) { o.forEach(function (t) { if (optIds.indexOf(t) < 0) optIds.push(t); }); });
     var sh = CK.show, shown = sh ? sh.table : g.table;
-    $('#ck-table').innerHTML = shown.length ? '<div class="cards">' + shown.map(function (id) {
+    setHtml($('#ck-table'), shown.length ? '<div class="cards">' + shown.map(function (id) {
       if (sh) return cardHtml(id, id === sh.played ? (sh.took.length ? 'played' : 'landed') : sh.took.indexOf(id) >= 0 ? 'took' : '');
       return cardHtml(id, (optIds.indexOf(id) >= 0 ? 'opt ' : '') + (picks.indexOf(id) >= 0 ? 'picked' : ''));
-    }).join('') + '</div>' : '<span class="empty">The table is empty</span>';
-    ckFit();
-    $('#ck-hand').innerHTML = CK.watch ? backs(g.hands[0].length) : g.hands[0].map(function (id) { return cardHtml(id, (CK.sel === id ? 'sel' : '') + (CK.busy || g.turn !== 0 ? ' wait' : '')); }).join('');
+    }).join('') + '</div>' : '<span class="empty">The table is empty</span>');
+    setHtml($('#ck-hand'), CK.watch ? backs(g.hands[0].length) : g.hands[0].map(function (id) { return cardHtml(id, (CK.sel === id ? 'sel' : '') + (CK.busy || g.turn !== 0 ? ' wait' : '')); }).join(''));
     var meBox = $('#ck-me');
     if (CK.online) {
       var pe0 = CK.people ? CK.people[0] : null;
@@ -350,7 +382,7 @@
     // last play, shown as small cards
     var lp = CK.last, lh = '';
     if (lp) lh = cardHtml(lp.card, 'mini', 'div') + (lp.took.length ? '<span class="arrow">→</span>' + lp.took.map(function (t) { return cardHtml(t, 'mini', 'div'); }).join('') : '<span class="arrow">↓</span>');
-    $('#ck-last').innerHTML = lh;
+    setHtml($('#ck-last'), lh);
     $('#ck-status').textContent = CK.msg;
     $('#ck-chk').hidden = !(lp && lp.chk && CK.show); if (lp && lp.flash) $('#ck-chk').textContent = lp.flash;
     $('#ck-haya').hidden = !(lp && lp.haya && CK.show);
@@ -364,6 +396,12 @@
     else { label = 'Choose cards to take'; act.disabled = true; }
     act.textContent = label;
     act.classList.toggle('primary', !act.disabled);
+    if (CKG === 'ronda') {                                   // a Ronda or Tringa is only scored if the player declares it before the first card of the hand
+      var off = CK.watch ? null : CK.online ? CK.declOffer : (g.phase === 'play' && CKE.canDeclare(g, 0) ? g.combos[0] : null);
+      if (!off) CK.asked = false;
+      else if (!CK.asked && !CK.busy && g.phase === 'play' && g.turn === 0) { CK.asked = true; ckAskDecl(off); }
+    }
+    ckFit();   // last, so the hand, the status line and the bar already take their room
   }
 
   /* ----- wiring ----- */
@@ -450,6 +488,7 @@
       if (i === ms && !CK.watch) h = (v.hand || []).slice(); else { h = []; for (var k = 0; k < v.handN[i]; k++) h.push(-1); }
       hands[rot(i)] = h;
     }
+    CK.declOffer = v.decl || null;
     CK.turnSec = v.turnSec || 0; CK.deadline = v.tl != null ? Date.now() + v.tl : null;
     var deck = []; for (i = 0; i < v.deck; i++) deck.push(-1);
     function two(a) { return swap ? [a[1], a[0]] : [a[0], a[1]]; }
